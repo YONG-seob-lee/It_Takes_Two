@@ -12,16 +12,26 @@ AActor_Base_Character::AActor_Base_Character()
 	CheckShift = false;
 	CheckCtrl = false;
 	CheckSpace = false;
+	bIsAimed = false;
 
-	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SPRINGARM"));
-	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("CAMERA"));
+	CameraBoomNormal = CreateDefaultSubobject<USpringArmComponent>(TEXT("CAMERABOOOMNORMAL"));
+	CameraBoomNormal->SetupAttachment(RootComponent);
+	CameraBoomNormal->SetRelativeLocationAndRotation(FVector(0.0f, 0.0f, 0.0f), FRotator(-25.0f, 0.0f, 0.0f));
+	CameraBoomNormal->TargetArmLength = 500.0f;
+	CameraBoomNormal->bEnableCameraLag = true;
+	CameraBoomNormal->CameraLagSpeed = 10.0f;
 
-	SpringArm->SetupAttachment(GetCapsuleComponent());
-	Camera->SetupAttachment(SpringArm);
+	CameraBoomAiming = CreateDefaultSubobject<USpringArmComponent>(TEXT("CAMERABOOMAIMING"));
+	CameraBoomAiming->SetupAttachment(RootComponent);
+	CameraBoomAiming->SetRelativeLocationAndRotation(FVector(200.0f, 50.0f, 50.0f), FRotator(-15.0f, 0.0f, 0.0f));
+	CameraBoomAiming->TargetArmLength = 300.0f;
+	CameraBoomAiming->bEnableCameraLag = true;
+	CameraBoomAiming->CameraLagSpeed = 10.0f;
+
+	FollowingCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("CAMERA"));
+	FollowingCamera->SetupAttachment(CameraBoomNormal);
 
 	GetMesh()->SetRelativeLocationAndRotation(FVector(0.0f, 0.0f, -88.0f), FRotator(0.0f, -90.0f, 0.0f));
-	SpringArm->TargetArmLength = 400.0f;
-	SpringArm->SetRelativeRotation(FRotator(-15.0f, 0.0f, 0.0f));
 
 	static ConstructorHelpers::FObjectFinder<USkeletalMesh> SK_CODY(TEXT("SkeletalMesh'/Game/BaseCharacter/untitled.untitled'"));
 	if (SK_CODY.Succeeded())
@@ -37,9 +47,9 @@ AActor_Base_Character::AActor_Base_Character()
 		GetMesh()->SetAnimInstanceClass(CODY_IDLE_ANIM.Class);
 	}
 
-	SetControlMode(EJoomMode::NORMAL);
+	//SetControlMode();
 
-	Speedrate = 1.0f;
+	Speedrate = 2.0f;
 }
 
 // Called when the game starts or when spawned
@@ -48,50 +58,17 @@ void AActor_Base_Character::BeginPlay()
 	Super::BeginPlay();
 }
 
-void AActor_Base_Character::SetControlMode(EJoomMode NewControlMode)
+void AActor_Base_Character::SetControlMode()
 {
-	CurrentControlMode = NewControlMode;
-
-	switch (CurrentControlMode)
-	{
-	case EJoomMode::NORMAL:
-		SpringArm->TargetArmLength = 500.0f;
-		SpringArm->SetRelativeRotation(FRotator::ZeroRotator);
-		SpringArm->bUsePawnControlRotation = true;
-		SpringArm->bInheritPitch = true;
-		SpringArm->bInheritYaw = true;
-		SpringArm->bDoCollisionTest = true;
-		bUseControllerRotationYaw = false;
-		GetCharacterMovement()->bOrientRotationToMovement = true;
-		GetCharacterMovement()->RotationRate = FRotator(0.0f, 300.0f, 0.0f);
-		break;
-
-	case EJoomMode::NAILMODE:
-		SpringArm->TargetArmLength = 130.0f;
-		SpringArm->SetRelativeRotation(FRotator::ZeroRotator);
-		SpringArm->SetRelativeLocation(FVector(0.0f, 50.0f, 100.0f));
-		SpringArm->bUsePawnControlRotation = true;
-		SpringArm->bInheritPitch = true;
-		SpringArm->bInheritYaw = true;
-		SpringArm->bDoCollisionTest = true;
-		bUseControllerRotationYaw = false;
-		GetCharacterMovement()->bOrientRotationToMovement = false;
-		GetCharacterMovement()->bUseControllerDesiredRotation = true;
-		GetCharacterMovement()->RotationRate = FRotator(0.0f, 720.0f, 0.0f);
-		break;
-	}
+	bUseControllerRotationYaw = false;
+	GetCharacterMovement()->bOrientRotationToMovement = true;
+	GetCharacterMovement()->RotationRate = FRotator(0.0f, 300.0f, 0.0f);
 }
 
 // Called every frame
 void AActor_Base_Character::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
-	if (CheckShift == true)	 Speedrate = 2.0f;
-	else	Speedrate = 1.0f;
-
-	if (CheckCtrl == true)	Speedrate = 0.4f;
-	else	Speedrate = 1.0f;
 }
 
 // Called to bind functionality to input
@@ -99,7 +76,8 @@ void AActor_Base_Character::SetupPlayerInputComponent(UInputComponent* PlayerInp
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
-	PlayerInputComponent->BindAction(TEXT("JoomIn"), EInputEvent::IE_Pressed, this, &AActor_Base_Character::JoomIn);
+	PlayerInputComponent->BindAction(TEXT("Aim"), EInputEvent::IE_Pressed, this, &AActor_Base_Character::Aim);
+	PlayerInputComponent->BindAction(TEXT("Aim"), EInputEvent::IE_Released, this, &AActor_Base_Character::StopAim);
 	PlayerInputComponent->BindAction(TEXT("Sprint"), EInputEvent::IE_Pressed, this, &AActor_Base_Character::StartSprint);
 	PlayerInputComponent->BindAction(TEXT("Sprint"), EInputEvent::IE_Released, this, &AActor_Base_Character::StopSprint);
 	PlayerInputComponent->BindAction(TEXT("Walk"), EInputEvent::IE_Pressed, this, &AActor_Base_Character::StartWalk);
@@ -114,91 +92,99 @@ void AActor_Base_Character::SetupPlayerInputComponent(UInputComponent* PlayerInp
 
 void AActor_Base_Character::UpDown(float NewAxisValue)
 {
-	switch (CurrentControlMode)
-	{
-	case EJoomMode::NORMAL:
-		AddMovementInput(FVector(1.0f, 0.0f, 0.0f), NewAxisValue * Speedrate);
-		AtoCAngle = GetActorForwardVector().CosineAngle2D(FVector(1.0f, 0.0f, 0.0f));
-		break;		// (1,0,0)
-
-	case EJoomMode::NAILMODE:
-		AddMovementInput(FRotationMatrix(GetControlRotation()).GetUnitAxis(EAxis::X), (NewAxisValue / 5) * Speedrate);
-		break;
-	}
+	FVector Direction = FRotationMatrix(Controller->GetControlRotation()).GetScaledAxis(EAxis::X);
+	AddMovementInput(Direction, NewAxisValue * Speedrate);
+	AtoCAngle = GetActorForwardVector().CosineAngle2D(FVector(1.0f, 0.0f, 0.0f));
 }
 
 void AActor_Base_Character::LeftRight(float NewAxisValue)
 {
-	switch (CurrentControlMode)
-	{
-	case EJoomMode::NORMAL:
-		AddMovementInput(FVector(0.0f, 1.0f, 0.0f), NewAxisValue * Speedrate);
-		AtoCAngle = GetActorForwardVector().CosineAngle2D(FVector(1.0f, 0.0f, 0.0f));
-		ToGoDir = NewAxisValue;
-		break;	//(0 , 1 , 0)
-
-	case EJoomMode::NAILMODE:
-		AddMovementInput(FRotationMatrix(GetControlRotation()).GetUnitAxis(EAxis::Y), (NewAxisValue / 5) * Speedrate);
-		ToGoDir = NewAxisValue;
-		break;
-	}
+	FVector Direction = FRotationMatrix(Controller->GetControlRotation()).GetScaledAxis(EAxis::Y);
+	AddMovementInput(Direction, NewAxisValue * Speedrate);
+	AtoCAngle = GetActorForwardVector().CosineAngle2D(FVector(1.0f, 0.0f, 0.0f));
+	ToGoDir = NewAxisValue;
 }
 
 void AActor_Base_Character::LookUp(float NewAxisValue)
 {
-	switch (CurrentControlMode)
-	{
-	case EJoomMode::NORMAL:
-		AddControllerYawInput(NewAxisValue);
-		break;
-
-	case EJoomMode::NAILMODE:
-		AddControllerYawInput(NewAxisValue / 7);
-		break;
-	}
+	AddControllerYawInput(NewAxisValue);
 }
 
 void AActor_Base_Character::Turn(float NewAxisValue)
 {
-	switch (CurrentControlMode)
-	{
-	case EJoomMode::NORMAL:
-		AddControllerPitchInput(NewAxisValue);
-		break;
-
-	case EJoomMode::NAILMODE:
-		AddControllerPitchInput(NewAxisValue / 7);
-		break;
-	}
+	AddControllerPitchInput(NewAxisValue);
 }
 
 void AActor_Base_Character::Jump()
 {
+	if (bIsAimed)	return;
 	Super::Jump();
 	JumpMaxCount = 2;
 	CheckSpace = JumpCurrentCount;
+	GetCharacterMovement()->bApplyGravityWhileJumping = 10;
 	GetCharacterMovement()->JumpZVelocity = 800.0f;
 }
 
 void AActor_Base_Character::StartSprint()
 {
+	if (bIsAimed)	return;
 	CheckShift = true;
+	GetCharacterMovement()->MaxWalkSpeed *= Speedrate;
+
 	UE_LOG(LogTemp, Warning, L"StartSprint");
 }
 
 void AActor_Base_Character::StopSprint()
 {
+	if (bIsAimed)	return;
 	CheckShift = false;
+	GetCharacterMovement()->MaxWalkSpeed /= Speedrate;
+
 	UE_LOG(LogTemp, Warning, L"StopSprint");
 }
+
 void AActor_Base_Character::StartWalk()
 {
 	CheckCtrl = true;
+	GetCharacterMovement()->MaxWalkSpeed /= Speedrate;
 }
+
 void AActor_Base_Character::StopWalk()
 {
 	CheckCtrl = false;
+	GetCharacterMovement()->MaxWalkSpeed *= Speedrate;
 }
+
+void AActor_Base_Character::Aim()
+{
+	if (CheckShift)	return;
+
+	UE_LOG(LogTemp, Warning, TEXT("Aim"));
+
+	bIsAimed = true;
+
+	FLatentActionInfo LatentInfo;
+	LatentInfo.CallbackTarget = this;
+	FollowingCamera->AttachToComponent(CameraBoomAiming, FAttachmentTransformRules::KeepWorldTransform);
+	UKismetSystemLibrary::MoveComponentTo(FollowingCamera, FVector(0.0f, 0.0f, 0.0f), FRotator(0.0f, 0.0f, 0.0f), true, true, 0.2, false, EMoveComponentAction::Type::Move, LatentInfo);
+
+}
+void AActor_Base_Character::StopAim()
+{
+	if (CheckShift)	return;
+
+	UE_LOG(LogTemp, Warning, TEXT("AimStop"));
+
+	bIsAimed = false;
+
+	FLatentActionInfo LatentInfo;
+	LatentInfo.CallbackTarget = this;
+	FollowingCamera->AttachToComponent(CameraBoomNormal, FAttachmentTransformRules::KeepWorldTransform);
+	UKismetSystemLibrary::MoveComponentTo(FollowingCamera, FVector(0.0f, 0.0f, 0.0f), FRotator(0.0f, 0.0f, 0.0f), true, true, 0.2, false, EMoveComponentAction::Type::Move, LatentInfo);
+
+}
+
+
 float AActor_Base_Character::GetPressDirection()
 {
 	return ToGoDir;
@@ -224,17 +210,5 @@ float AActor_Base_Character::GetAngle()
 	return AtoCAngle;
 }
 
-void AActor_Base_Character::JoomIn()
-{
-	switch (CurrentControlMode)
-	{
-	case EJoomMode::NORMAL:
-		GetController()->SetControlRotation(GetActorRotation());
-		SetControlMode(EJoomMode::NAILMODE);
-		break;
-	case EJoomMode::NAILMODE:
-		GetController()->SetControlRotation(GetActorRotation());
-		SetControlMode(EJoomMode::NORMAL);
-	}
-}
+
 

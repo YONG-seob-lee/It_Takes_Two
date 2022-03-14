@@ -24,20 +24,14 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-	enum class EJoomMode
-	{
-		NORMAL,
-		NAILMODE
-	};
-
-	void SetControlMode(EJoomMode NewControlMode);
-	EJoomMode CurrentControlMode = EJoomMode::NORMAL;
+	void SetControlMode();
 	FVector DirectionToMove = FVector::ZeroVector;
-	float ToGoDir;
-	float Speedrate;
-	float AtoCAngle;
-	bool CheckShift;
-	bool CheckCtrl;
+	float ToGoDir;			// jogging 때 고개 돌리는 방향
+	float Speedrate;		
+	float AtoCAngle;		// 캐릭터가 바라보는정면 방향과 카메라가 바라보는 정면 방향 사이각
+	bool CheckShift;		// 쉬프트키가 눌렸는지 체크
+	bool CheckCtrl;			// 컨트롤키가 눌렸는지 체크
+	bool bIsAimed;			// 에임이 적용되었는지 체크
 	int32 CheckSpace;
 
 public:
@@ -48,10 +42,13 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 	UPROPERTY(VisibleAnywhere, Category = Camera)
-		USpringArmComponent* SpringArm;
+		USpringArmComponent* CameraBoomNormal;
 
 	UPROPERTY(VisibleAnywhere, Category = Camera)
-		UCameraComponent* Camera;
+		USpringArmComponent* CameraBoomAiming;
+
+	UPROPERTY(VisibleAnywhere, Category = Camera)
+		UCameraComponent* FollowingCamera;
 
 private:
 	void UpDown(float NewAxisValue);
@@ -65,5 +62,6 @@ private:
 	void StartWalk();
 	void StopWalk();
 
-	void JoomIn();
+	void Aim();
+	void StopAim();
 };
