@@ -11,7 +11,7 @@ AActor_Base_Character::AActor_Base_Character()
 	PrimaryActorTick.bCanEverTick = true;
 	CheckShift = false;
 	CheckCtrl = false;
-	CheckSpace = false;
+	CheckSpace = 0;
 	bIsAimed = false;
 
 	CameraBoomNormal = CreateDefaultSubobject<USpringArmComponent>(TEXT("CAMERABOOOMNORMAL"));
@@ -19,7 +19,18 @@ AActor_Base_Character::AActor_Base_Character()
 	CameraBoomNormal->SetRelativeLocationAndRotation(FVector(0.0f, 0.0f, 0.0f), FRotator(-25.0f, 0.0f, 0.0f));
 	CameraBoomNormal->TargetArmLength = 500.0f;
 	CameraBoomNormal->bEnableCameraLag = true;
-	CameraBoomNormal->CameraLagSpeed = 10.0f;
+	CameraBoomNormal->bEnableCameraRotationLag = true;
+	CameraBoomNormal->CameraLagSpeed = 3.0f;
+	CameraBoomNormal->bUsePawnControlRotation = true;		// 컨트롤러의 회전을 마우스가 능동적으로 바뀜
+	CameraBoomNormal->bInheritPitch = true;					// SpringArm 상속받아온다
+	CameraBoomNormal->bInheritRoll = true;					// SpringArm 상속받아온다
+	CameraBoomNormal->bInheritYaw = true;					// SpringArm 상속받아온다
+	CameraBoomNormal->bDoCollisionTest = true;				// 카메라가 충돌해서 잘려보이지 않게 한다.
+	bUseControllerRotationYaw = false;						// 컨트롤러의 회전을 부드럽게 하기 위한 변수
+	GetCharacterMovement()->bOrientRotationToMovement = true;	// 자동적으로 캐릭터의 이동방향을 움직이는 방향에 맞춰준다.
+	GetCharacterMovement()->bUseControllerDesiredRotation = false;
+	GetCharacterMovement()->RotationRate = FRotator(0.0f, 720.0f, 0.0f);
+
 
 	CameraBoomAiming = CreateDefaultSubobject<USpringArmComponent>(TEXT("CAMERABOOMAIMING"));
 	CameraBoomAiming->SetupAttachment(RootComponent);
@@ -58,6 +69,12 @@ void AActor_Base_Character::BeginPlay()
 	Super::BeginPlay();
 }
 
+void AActor_Base_Character::PostInitializeComponents()
+{
+	Super::PostInitializeComponents();
+	LandedDelegate.AddDynamic(this, &AActor_Base_Character::EndJump);
+}
+
 void AActor_Base_Character::SetControlMode()
 {
 	bUseControllerRotationYaw = false;
@@ -94,14 +111,14 @@ void AActor_Base_Character::UpDown(float NewAxisValue)
 {
 	FVector Direction = FRotationMatrix(Controller->GetControlRotation()).GetScaledAxis(EAxis::X);
 	AddMovementInput(Direction, NewAxisValue * Speedrate);
-	AtoCAngle = GetActorForwardVector().CosineAngle2D(FVector(1.0f, 0.0f, 0.0f));
+	AtoCAngle = GetActorForwardVector().DegreesToRadians(FollowingCamera->GetForwardVector());
 }
 
 void AActor_Base_Character::LeftRight(float NewAxisValue)
 {
 	FVector Direction = FRotationMatrix(Controller->GetControlRotation()).GetScaledAxis(EAxis::Y);
 	AddMovementInput(Direction, NewAxisValue * Speedrate);
-	AtoCAngle = GetActorForwardVector().CosineAngle2D(FVector(1.0f, 0.0f, 0.0f));
+	AtoCAngle = GetActorForwardVector().RadiansToDegrees(FollowingCamera->GetForwardVector());
 	ToGoDir = NewAxisValue;
 }
 
@@ -123,6 +140,12 @@ void AActor_Base_Character::Jump()
 	CheckSpace = JumpCurrentCount;
 	GetCharacterMovement()->bApplyGravityWhileJumping = 10;
 	GetCharacterMovement()->JumpZVelocity = 800.0f;
+}
+
+void AActor_Base_Character::EndJump(const FHitResult& Hit)
+{
+	UE_LOG(LogTemp, Warning, TEXT("EndJump"));
+	CheckSpace = 0;
 }
 
 void AActor_Base_Character::StartSprint()
@@ -167,7 +190,6 @@ void AActor_Base_Character::Aim()
 	LatentInfo.CallbackTarget = this;
 	FollowingCamera->AttachToComponent(CameraBoomAiming, FAttachmentTransformRules::KeepWorldTransform);
 	UKismetSystemLibrary::MoveComponentTo(FollowingCamera, FVector(0.0f, 0.0f, 0.0f), FRotator(0.0f, 0.0f, 0.0f), true, true, 0.2, false, EMoveComponentAction::Type::Move, LatentInfo);
-
 }
 void AActor_Base_Character::StopAim()
 {
@@ -207,7 +229,7 @@ int32 AActor_Base_Character::GetPressSpace()
 
 float AActor_Base_Character::GetAngle()
 {
-	return AtoCAngle;
+	return 0.0f;
 }
 
 

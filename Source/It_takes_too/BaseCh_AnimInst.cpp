@@ -34,7 +34,7 @@ void UBaseCh_AnimInst::NativeUpdateAnimation(float DeltaSeconds)
 		Angle = Cody->GetAngle();
 		IsInAir = Cody->GetMovementComponent()->IsFalling();
 
-		if (Cody->GetPressSpace() == 1)		CheckJump = true;
+		if (Cody->GetPressSpace() == 1 || Cody->GetPressSpace() == 2)		CheckJump = true;
 		else	false;
 	}
 }
