@@ -20,7 +20,6 @@ public:
 	UBaseCh_AnimInst();
 	virtual void NativeUpdateAnimation(float DeltaSeconds)	 override;
 
-
 private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Pawn, Meta = (AllowPrivateAccess = true))
 	float CurrentPawnSpeed;
@@ -35,11 +34,17 @@ private:
 	bool CheckWalk;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Pawn, Meta = (AllowPrivateAccess = true))
-	bool CheckJump;
+	int32 CurrentJumpCount;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Pawn, Meta = (AllowPrivateAccess = true))
 	float Angle;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Pawn, Meta = (AllowPrivateAccess = true))
 	bool IsInAir;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Pawn, Meta = (AllowPrivateAccess = true))
+	bool IsAimed;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Pawn, Meta = (AllowPrivateAccess = true))
+	bool Throwing;
 };

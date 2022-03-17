@@ -2,6 +2,8 @@
 
 #pragma once
 
+DECLARE_MULTICAST_DELEGATE(FOnSprint);
+
 #include "It_takes_too.h"
 #include "GameFramework/Character.h"
 #include "Actor_Base_Character.generated.h"
@@ -18,21 +20,32 @@ public:
 	float GetPressDirection();
 	bool GetPressShift();
 	bool GetPressCtrl();
-	int32 GetPressSpace();
+	bool GetbIsAimed();
+	int32 GetJumpCount();
 	float GetAngle();
-
+	// 
 	enum class LocomotionState:int8
 	{
+		Idle,
 		Walk,
 		Jogging,
 		Sprint
 	};
 
+	//	 Param :   Velocity,  "PressButton" 
+	enum class AimingMode
+	{
+		Normal,
+		Aiming
+	};
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
-
-	void SetControlMode();
+	void SetAimingMode(AimingMode NewAimingMode);
+	LocomotionState LocState;
+	AimingMode CurrentAimingMode;
+	FOnSprint OnSprint;
 	FVector DirectionToMove = FVector::ZeroVector;
 	float ToGoDir;			// jogging 때 고개 돌리는 방향
 	float Speedrate;		
@@ -40,7 +53,6 @@ protected:
 	bool CheckShift;		// 쉬프트키가 눌렸는지 체크
 	bool CheckCtrl;			// 컨트롤키가 눌렸는지 체크
 	bool bIsAimed;			// 에임이 적용되었는지 체크
-	int32 CheckSpace;
 	int32 CheckState;
 
 public:
