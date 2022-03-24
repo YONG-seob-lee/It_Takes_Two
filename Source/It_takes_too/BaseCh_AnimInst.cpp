@@ -27,7 +27,6 @@ void UBaseCh_AnimInst::NativeUpdateAnimation(float DeltaSeconds)
 		{
 			JogDirection = Cody->GetPressDirection();	// 조깅 확인
 		}
-		CheckSprint = Cody->GetPressShift();			// 스프린트 유무 확인
 		CheckWalk = Cody->GetPressCtrl();
 
 		Angle = Cody->GetAngle();

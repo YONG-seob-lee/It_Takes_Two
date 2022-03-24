@@ -9,10 +9,10 @@ AActor_Base_Character::AActor_Base_Character()
 {
 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
-	CheckShift = false;
 	CheckCtrl = false;
 	bIsAimed = false;
 	Speedrate = 2.0f;			// 속도계수
+	CharState = CharacterState::Idle;
 
 	FollowingCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("CAMERA"));
 	CameraBoomNormal = CreateDefaultSubobject<USpringArmComponent>(TEXT("CAMERABOOOMNORMAL"));
@@ -101,6 +101,14 @@ void AActor_Base_Character::PostInitializeComponents()
 void AActor_Base_Character::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	FVector LastContVector = LastControlInputVector;
+	LastContVector.Normalize();
+
+	dot = FVector::DotProduct(GetActorForwardVector(), LastContVector);		// 내적을 구함
+	Angle = FMath::RadiansToDegrees(FMath::Acos(dot));
+
+	UE_LOG(LogTemp, Warning, TEXT("Radian::%f"), Angle);
+	
 }
 
 // Called to bind functionality to input
@@ -124,6 +132,12 @@ void AActor_Base_Character::SetupPlayerInputComponent(UInputComponent* PlayerInp
 
 void AActor_Base_Character::UpDown(float NewAxisValue)
 {
+	// State part
+	if (CharState == CharacterState::Roll && CharState == CharacterState::ThrowStart && CharState == CharacterState::ThrowEnd && CharState == CharacterState::Acquire)	return;
+
+	if (CharState == CharacterState::Recall)	CharState = CharacterState::JogRecall;
+	CharState = CharacterState::Jogging;
+	///////////////
 	switch (CurrentAimingMode)
 	{
 	case AimingMode::Normal:
@@ -131,7 +145,6 @@ void AActor_Base_Character::UpDown(float NewAxisValue)
 		Speedrate = 2.0f;
 		FVector Direction = FRotationMatrix(Controller->GetControlRotation()).GetScaledAxis(EAxis::X);
 		AddMovementInput(Direction, NewAxisValue * Speedrate);
-		AtoCAngle = GetActorForwardVector().DegreesToRadians(FollowingCamera->GetForwardVector());
 		break;
 	}
 	case AimingMode::Aiming:
@@ -145,9 +158,14 @@ void AActor_Base_Character::UpDown(float NewAxisValue)
 
 void AActor_Base_Character::LeftRight(float NewAxisValue)
 {
+	// State part
+	if (CharState == CharacterState::Roll && CharState == CharacterState::ThrowStart && CharState == CharacterState::ThrowEnd && CharState == CharacterState::Acquire)	return;
+
+	if (CharState == CharacterState::Recall)	CharState = CharacterState::JogRecall;
+	CharState = CharacterState::Jogging;
+	///////////////
 	FVector Direction = FRotationMatrix(Controller->GetControlRotation()).GetScaledAxis(EAxis::Y);
 	AddMovementInput(Direction, NewAxisValue * Speedrate);
-	AtoCAngle = GetActorForwardVector().RadiansToDegrees(FollowingCamera->GetForwardVector());
 	ToGoDir = NewAxisValue;
 }
 
@@ -167,6 +185,8 @@ void AActor_Base_Character::LookUp(float NewAxisValue)
 	}
 	}
 }
+
+
 
 void AActor_Base_Character::Turn(float NewAxisValue)
 {
@@ -201,8 +221,10 @@ void AActor_Base_Character::EndJump(const FHitResult& Hit)
 
 void AActor_Base_Character::StartSprint()
 {
-	if (bIsAimed)	return;
-	CheckShift = true;
+	// State part
+	if (CharState == CharacterState::Idle && CharState == CharacterState::Jump && CharState == CharacterState::Roll && CharState == CharacterState::ThrowStart && CharState == CharacterState::ThrowEnd)	return;
+	CharState = CharacterState::Sprint;
+	//////////////
 	GetCharacterMovement()->MaxWalkSpeed *= Speedrate;
 	OnSprint.Broadcast();
 	UE_LOG(LogTemp, Warning, L"StartSprint");
@@ -210,8 +232,6 @@ void AActor_Base_Character::StartSprint()
 
 void AActor_Base_Character::StopSprint()
 {
-	if (bIsAimed)	return;
-	CheckShift = false;
 	GetCharacterMovement()->MaxWalkSpeed /= Speedrate;
 
 	UE_LOG(LogTemp, Warning, L"StopSprint");
@@ -231,7 +251,6 @@ void AActor_Base_Character::StopWalk()
 
 void AActor_Base_Character::Aim()
 {
-	if (CheckShift)	return;
 
 	UE_LOG(LogTemp, Warning, TEXT("Aim"));
 
@@ -246,7 +265,6 @@ void AActor_Base_Character::Aim()
 
 void AActor_Base_Character::StopAim()
 {
-	if (CheckShift)	return;
 
 	UE_LOG(LogTemp, Warning, TEXT("AimStop"));
 
@@ -263,11 +281,6 @@ void AActor_Base_Character::StopAim()
 float AActor_Base_Character::GetPressDirection()
 {
 	return ToGoDir;
-}
-
-bool AActor_Base_Character::GetPressShift()
-{
-	return CheckShift;
 }
 
 bool AActor_Base_Character::GetPressCtrl()
