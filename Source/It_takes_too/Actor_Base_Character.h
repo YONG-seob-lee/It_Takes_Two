@@ -10,21 +10,23 @@ DECLARE_MULTICAST_DELEGATE(FOnSprint);
 #include "Actor_Base_Character.generated.h"
 
 UENUM()
-enum class CharacterState:uint8
+enum class ECharacterState:uint8
 {
 	Idle,
 	Walk,
 	Jogging,
 	Sprint,
+	StartJump,
 	Jump,
+	EndJump,
 	Roll,		// 앞구르기
-	ThrowStart,
-	ThrowAim,
-	ThrowEnd,
-	JogThrow,
+	NormalAiming,	// 기본 에임자세
+	WalkAiming,		// 천천히 걷는 에임자세
+	ThrowStart,		// 던시는시점부터 못이 코디한테서 떼질때까지
+	ThrowEnd,		// 못이 날아가는와중에 idle로 돌아가는 state
 	Acquire,	// 못 죄다 수집
-	Recall,
-	JogRecall
+	NormalRecall,
+	WalkRecall,
 };
 
 UCLASS()
@@ -36,8 +38,8 @@ public:
 	virtual void PostInitializeComponents() override;
 	// Sets default values for this character's properties
 	AActor_Base_Character();
+	ECharacterState GetState();
 	float GetPressDirection();
-	bool GetPressCtrl();
 	bool GetbIsAimed();
 	int32 GetJumpCount();
 	float GetAngle();
@@ -54,18 +56,20 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 	void SetAimingMode(AimingMode NewAimingMode);
-	CharacterState CharState;
+	ECharacterState CharState;
 	AimingMode CurrentAimingMode;
 	FOnSprint OnSprint;
 	FVector DirectionToMove = FVector::ZeroVector;
+	float CurrentPawnSpeed;
 	float ToGoDir;			// jogging 때 고개 돌리는 방향
 	float Speedrate;		
 
 	float dot;			// 두 변위의 내적
 	float Angle;		// 캐릭터가 바라보는정면 방향과 카메라가 바라보는 정면 방향 사이각
-	bool CheckCtrl;			// 컨트롤키가 눌렸는지 체크
 	bool bIsAimed;			// 에임이 적용되었는지 체크
 	int32 CheckState;
+
+	FString GetEStateAsString(ECharacterState EnumValue);
 
 public:
 	// Called every frame
@@ -88,10 +92,11 @@ private:
 	void LeftRight(float NewAxisValue);
 	void LookUp(float NewAxisValue);
 	void Turn(float NewAxisValue);
+	
+	void StartJump();
 	virtual void Jump() override;
-
-	UFUNCTION()
-	void EndJump(const FHitResult& Hit);
+	virtual void StopJumping() override;
+	void EndJump();
 
 	void StartSprint();
 	void StopSprint();

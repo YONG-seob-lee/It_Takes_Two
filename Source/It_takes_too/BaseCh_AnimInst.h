@@ -6,7 +6,7 @@
 #include "Animation/AnimInstance.h"
 #include "BaseCh_AnimInst.generated.h"
 
-enum class CharacterState:uint8;
+enum class ECharacterState:uint8;
 /**
  *
  */
@@ -50,5 +50,5 @@ private:
 	bool Throwing;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Pawn, Meta = (AllowPrivateAccess = true))
-	CharacterState State;
+	ECharacterState State;
 };

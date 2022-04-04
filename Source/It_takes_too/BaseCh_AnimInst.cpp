@@ -27,8 +27,8 @@ void UBaseCh_AnimInst::NativeUpdateAnimation(float DeltaSeconds)
 		{
 			JogDirection = Cody->GetPressDirection();	// Á¶±ë È®ÀÎ
 		}
-		CheckWalk = Cody->GetPressCtrl();
 
+		State = Cody->GetState();
 		Angle = Cody->GetAngle();
 		IsInAir = Cody->GetMovementComponent()->IsFalling();
 		CurrentJumpCount = Cody->GetJumpCount();
