@@ -8,7 +8,6 @@
 UBaseCh_AnimInst::UBaseCh_AnimInst()
 {
 	CurrentPawnSpeed = 0.0f;
-	IsInAir = false;
 }
 
 void UBaseCh_AnimInst::NativeUpdateAnimation(float DeltaSeconds)
@@ -30,9 +29,7 @@ void UBaseCh_AnimInst::NativeUpdateAnimation(float DeltaSeconds)
 
 		State = Cody->GetState();
 		Angle = Cody->GetAngle();
-		IsInAir = Cody->GetMovementComponent()->IsFalling();
 		CurrentJumpCount = Cody->GetJumpCount();
-		IsAimed = Cody->GetbIsAimed();
 		Throwing = Cody->GetIsThrowing();
 	}
 }

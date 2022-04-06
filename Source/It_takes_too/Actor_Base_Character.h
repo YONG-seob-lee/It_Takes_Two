@@ -16,9 +16,9 @@ enum class ECharacterState:uint8
 	Walk,
 	Jogging,
 	Sprint,
-	StartJump,
+	StopSprint,
 	Jump,
-	EndJump,
+	StopJump,	// 점프를 취소한 시점(점프버튼을 뗀 시점)
 	Roll,		// 앞구르기
 	NormalAiming,	// 기본 에임자세
 	WalkAiming,		// 천천히 걷는 에임자세
@@ -92,7 +92,7 @@ private:
 	void LeftRight(float NewAxisValue);
 	void LookUp(float NewAxisValue);
 	void Turn(float NewAxisValue);
-	
+
 	void StartJump();
 	virtual void Jump() override;
 	virtual void StopJumping() override;

@@ -117,11 +117,8 @@ void AActor_Base_Character::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	CurrentPawnSpeed = GetVelocity().Size();
-
-	//if(CurrentPawnSpeed == 0.0f && )
-	UKismetSystemLibrary::PrintString(GetWorld(), GetEStateAsString(CharState), true, true, FLinearColor::Green, 2.0f);
-	UE_LOG(LogTemp, Warning, TEXT("%s"), *GetEStateAsString(CharState));
+	//UKismetSystemLibrary::PrintString(GetWorld(), GetEStateAsString(CharState), true, false, FLinearColor::Green, 2.0f);
+	//UE_LOG(LogTemp, Warning, TEXT("%s"), *GetEStateAsString(CharState));
 }
 
 // Called to bind functionality to input
@@ -136,6 +133,7 @@ void AActor_Base_Character::SetupPlayerInputComponent(UInputComponent* PlayerInp
 	PlayerInputComponent->BindAction(TEXT("Walk"), EInputEvent::IE_Pressed, this, &AActor_Base_Character::StartWalk);
 	PlayerInputComponent->BindAction(TEXT("Walk"), EInputEvent::IE_Released, this, &AActor_Base_Character::StopWalk);
 	PlayerInputComponent->BindAction(TEXT("Jump"), EInputEvent::IE_Pressed, this, &AActor_Base_Character::Jump);
+	PlayerInputComponent->BindAction(TEXT("Jump"), EInputEvent::IE_Released, this, &AActor_Base_Character::StopJumping);
 	
 	PlayerInputComponent->BindAxis(TEXT("UpDown"), this, &AActor_Base_Character::UpDown);
 	PlayerInputComponent->BindAxis(TEXT("LeftRight"), this, &AActor_Base_Character::LeftRight);
@@ -145,21 +143,34 @@ void AActor_Base_Character::SetupPlayerInputComponent(UInputComponent* PlayerInp
 
 void AActor_Base_Character::UpDown(float NewAxisValue)
 {
-	// State part	앞구르기, 던지기시작, 던지기끝, 못 회수 중에는 방향키 압수
-	if (CharState == ECharacterState::Roll && CharState == ECharacterState::ThrowStart && CharState == ECharacterState::ThrowEnd\
-		&& CharState == ECharacterState::Acquire)	return;
+	// State Part    1. do not "Fully" use axis values	'wasd'를 아얘 사용 안하는 스테이트
+	if (CharState == ECharacterState::StopJump || CharState == ECharacterState::Roll || CharState == ECharacterState::ThrowStart\
+		|| CharState == ECharacterState::ThrowEnd || CharState == ECharacterState::Acquire)	return;
 
-	if (CurrentPawnSpeed == 0.0f)	CharState = ECharacterState::Idle;
-	if (CurrentPawnSpeed > 0.0f)	CharState = ECharacterState::Jogging;
-	///////////////
-	switch (CurrentAimingMode)
+	// 2. perfectly do not use axis value(default state)
+	if (GetVelocity().Size() == 0.0f && GetMovementComponent()->IsFalling() == false)
 	{
-	case AimingMode::Normal:
+		CharState = ECharacterState::Idle;
+	}
+	// 3. use axis valus but are not in the "Jogging" state
+	else if (GetVelocity().Size() != 0.0f && GetMovementComponent()->IsFalling() == true)	CharState = ECharacterState::Jump;
+
+	else
 	{
-		
-		Speedrate = 2.0f;
-		FVector Direction = FRotationMatrix(Controller->GetControlRotation()).GetScaledAxis(EAxis::X);
-		AddMovementInput(Direction, NewAxisValue * Speedrate);
+		if (CharState == ECharacterState::Walk)	CharState = ECharacterState::Walk;
+		else if (CharState == ECharacterState::Sprint)	CharState = ECharacterState::Sprint;
+		else if (CharState == ECharacterState::NormalAiming)	CharState = ECharacterState::NormalAiming;
+		else if (CharState == ECharacterState::WalkAiming)	CharState = ECharacterState::WalkAiming;
+		else if (CharState == ECharacterState::NormalRecall)	CharState = ECharacterState::NormalRecall;
+		else if (CharState == ECharacterState::WalkRecall)	CharState = ECharacterState::WalkRecall;
+		else CharState = ECharacterState::Jogging;
+	}
+	/////////////////
+
+	Speedrate = 2.0f;
+
+	FVector Direction = FRotationMatrix(Controller->GetControlRotation()).GetScaledAxis(EAxis::X);
+	AddMovementInput(Direction, NewAxisValue * Speedrate);
 
 		FVector CurrentContVector = GetPendingMovementInputVector();
 		FVector ActorVector = GetActorForwardVector();
@@ -169,31 +180,40 @@ void AActor_Base_Character::UpDown(float NewAxisValue)
 		dot = FVector2D::DotProduct(CurrentConVector2D, ActorVector2D);		// 내적을 구함
 		Angle = FMath::RadiansToDegrees(FMath::Acos(dot));
 		
-		UE_LOG(LogTemp, Warning, TEXT("bePressed : %f, Angle : %f, CurrentV : %s, ActorV : %s"),NewAxisValue, Angle, *CurrentConVector2D.ToString(), *ActorVector2D.ToString());
-		break;
-	}
-	case AimingMode::Aiming:
-	{
-		Speedrate = 0.5;
-		AddMovementInput(FRotationMatrix(GetControlRotation()).GetUnitAxis(EAxis::X), NewAxisValue);
-		break;
-	}
-	}
+	//	UE_LOG(LogTemp, Warning, TEXT("bePressed : %f, Angle : %f, CurrentV : %s, ActorV : %s"),NewAxisValue, Angle, *CurrentConVector2D.ToString(), *ActorVector2D.ToString());
+	
 }
 
 void AActor_Base_Character::LeftRight(float NewAxisValue)
 {
-	// State part	앞구르기, 던지기시작, 던지기끝, 못 회수 중에는 방향키 압수
-	if (CharState == ECharacterState::Roll && CharState == ECharacterState::ThrowStart && CharState == ECharacterState::ThrowEnd\
-		&& CharState == ECharacterState::Acquire)	return;
+	// State Part    1. do not "Fully" use axis values
+	if (CharState == ECharacterState::StopJump || CharState == ECharacterState::Roll || CharState == ECharacterState::ThrowStart\
+		|| CharState == ECharacterState::ThrowEnd || CharState == ECharacterState::Acquire)	return;
 
-	if (CurrentPawnSpeed == 0.0f)	CharState = ECharacterState::Idle;
-	if (CurrentPawnSpeed > 0.0f)	CharState = ECharacterState::Jogging;
-	///////////////
+	// 2. use axis valus but are not in the "Jogging" state
+	if (GetVelocity().Size() == 0.0f && GetMovementComponent()->IsFalling() == false)
+	{
+		CharState = ECharacterState::Idle;
+	}
+	// 3. perfectly do not use axis value(default state)
+	else if (GetVelocity().Size() != 0.0f && GetMovementComponent()->IsFalling() == true)	CharState = ECharacterState::Jump;
+
+	else
+	{
+		if (CharState == ECharacterState::Walk)	CharState = ECharacterState::Walk;
+		else if (CharState == ECharacterState::Sprint)	CharState = ECharacterState::Sprint;
+		else if (CharState == ECharacterState::NormalAiming)	CharState = ECharacterState::NormalAiming;
+		else if (CharState == ECharacterState::WalkAiming)	CharState = ECharacterState::WalkAiming;
+		else if (CharState == ECharacterState::NormalRecall)	CharState = ECharacterState::NormalRecall;
+		else if (CharState == ECharacterState::WalkRecall)	CharState = ECharacterState::WalkRecall;
+		else CharState = ECharacterState::Jogging;
+	}
+	/////////////////
+
+	Speedrate = 2.0f;
 
 	FVector Direction = FRotationMatrix(Controller->GetControlRotation()).GetScaledAxis(EAxis::Y);
 	AddMovementInput(Direction, NewAxisValue * Speedrate);
-	ToGoDir = NewAxisValue;
 }
 
 void AActor_Base_Character::LookUp(float NewAxisValue)
@@ -212,8 +232,6 @@ void AActor_Base_Character::LookUp(float NewAxisValue)
 	}
 	}
 }
-
-
 
 void AActor_Base_Character::Turn(float NewAxisValue)
 {
@@ -234,8 +252,16 @@ void AActor_Base_Character::Turn(float NewAxisValue)
 
 void AActor_Base_Character::Jump()
 {
-	CharState = ECharacterState::Jump;
+	// State Part    1. can't be overlapped(action)
+	if (CharState == ECharacterState::StopJump || CharState == ECharacterState::Roll\
+		|| CharState == ECharacterState::Roll || CharState == ECharacterState::NormalAiming || CharState == ECharacterState::WalkAiming\
+		|| CharState == ECharacterState::ThrowStart || CharState == ECharacterState::ThrowEnd || CharState == ECharacterState::Acquire\
+		|| CharState == ECharacterState::NormalRecall || CharState == ECharacterState::WalkRecall || CharState == ECharacterState::StopSprint)	return;
+	// 2. own state of using the axis values(jump is a unique case, so it is classified into four types)
+	else CharState = ECharacterState::Jump;
+
 	Super::Jump();
+	UE_LOG(LogTemp, Warning, TEXT("Jump"));
 	JumpMaxCount = 2;
 	GetCharacterMovement()->bImpartBaseVelocityZ = 10;
 	GetCharacterMovement()->JumpZVelocity = 800.0f;
@@ -245,18 +271,22 @@ void AActor_Base_Character::Jump()
 void AActor_Base_Character::StopJumping()
 {
 	Super::StopJumping();
-	CharState = ECharacterState::EndJump;
-
+	CharState = ECharacterState::Idle;
+	UE_LOG(LogTemp, Warning, TEXT("EndJump"));
 }
-
 
 void AActor_Base_Character::StartSprint()
 {
-	// State part	멈춰있을떄(방향키를 안 누르고 있을 때), 점프중, 앞구르기, 던지기시작, 던지기 끝일 때 스프린트 압수
-	if (CharState == ECharacterState::Idle && CharState == ECharacterState::Jump && CharState == ECharacterState::Roll\
-		&& CharState == ECharacterState::ThrowStart && CharState == ECharacterState::ThrowEnd)	return;
+	// State Part    1. can't be overlapped(action)
+	if (CharState == ECharacterState::Idle || CharState == ECharacterState::StopJump || CharState == ECharacterState::Roll\
+		|| CharState == ECharacterState::ThrowStart || CharState == ECharacterState::ThrowEnd || CharState == ECharacterState::Acquire)	return;
 
-	CharState = ECharacterState::Sprint;
+	// 2. especially acceptable
+	else if (CharState == ECharacterState::NormalAiming || CharState == ECharacterState::WalkAiming || CharState == ECharacterState::NormalRecall\
+		|| CharState == ECharacterState::WalkRecall)	CharState = ECharacterState::Sprint;
+
+	// 3. own state of using the axis values(Walk, Jogging)
+	else	CharState = ECharacterState::Sprint;
 	//////////////
 	GetCharacterMovement()->MaxWalkSpeed *= Speedrate;
 	UE_LOG(LogTemp, Warning, L"StartSprint");
@@ -264,6 +294,7 @@ void AActor_Base_Character::StartSprint()
 
 void AActor_Base_Character::StopSprint()
 {
+	CharState = ECharacterState::StopSprint;
 	GetCharacterMovement()->MaxWalkSpeed /= Speedrate;
 
 	UE_LOG(LogTemp, Warning, L"StopSprint");
@@ -271,16 +302,25 @@ void AActor_Base_Character::StopSprint()
 
 void AActor_Base_Character::StartWalk()
 {
-	// State part	멈춰있을떄( ㄴ 방향키), 점프중, 앞구르기, 던지기시작, 던지기 끝일때 걷기 압수
-	if (CharState == ECharacterState::Idle && CharState == ECharacterState::Jump && CharState == ECharacterState::Roll\
-		&& CharState == ECharacterState::ThrowStart && CharState == ECharacterState::ThrowEnd)	return;
-	CharState = ECharacterState::Walk;
+	// State Part    1. can't be overlapped(action)
+	if (CharState == ECharacterState::Idle || CharState == ECharacterState::StopJump\
+		|| CharState == ECharacterState::Roll || CharState == ECharacterState::ThrowStart || CharState == ECharacterState::ThrowEnd\
+		|| CharState == ECharacterState::Acquire)	return;
+
+	// 2. especially acceptable
+	else if (CharState == ECharacterState::NormalAiming || CharState == ECharacterState::WalkAiming || CharState == ECharacterState::NormalRecall\
+		|| CharState == ECharacterState::WalkRecall)	CharState = ECharacterState::Walk;
+
+	// 3. own state of using the axis values(Walk, Jogging)
+	else	CharState = ECharacterState::Walk;
 	//////////////
+
 	GetCharacterMovement()->MaxWalkSpeed /= Speedrate;
 }
 
 void AActor_Base_Character::StopWalk()
 {
+	CharState = ECharacterState::Idle;
 	GetCharacterMovement()->MaxWalkSpeed *= Speedrate;
 }
 
@@ -290,7 +330,7 @@ void AActor_Base_Character::Aim()
 	// State part
 	if (CharState == ECharacterState::Walk)	CharState = ECharacterState::WalkAiming;
 	if (CharState == ECharacterState::Idle || CharState == ECharacterState::Jogging || CharState == ECharacterState::Sprint\
-		|| CharState == ECharacterState::Jump || CharState == ECharacterState::NormalRecall || CharState == ECharacterState::WalkRecall)
+		|| CharState == ECharacterState::NormalRecall || CharState == ECharacterState::WalkRecall)
 	{
 		CharState = ECharacterState::NormalAiming;
 	}
@@ -308,7 +348,6 @@ void AActor_Base_Character::Aim()
 
 void AActor_Base_Character::StopAim()
 {
-
 	UE_LOG(LogTemp, Warning, TEXT("AimStop"));
 
 	bIsAimed = false;
@@ -319,7 +358,6 @@ void AActor_Base_Character::StopAim()
 	UKismetSystemLibrary::MoveComponentTo(FollowingCamera, FVector(0.0f, 0.0f, 0.0f), FRotator(0.0f, 0.0f, 0.0f), true, true, 0.2, false, EMoveComponentAction::Type::Move, LatentInfo);
 	SetAimingMode(AimingMode::Normal);
 }
-
 
 float AActor_Base_Character::GetPressDirection()
 {
