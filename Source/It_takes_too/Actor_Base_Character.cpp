@@ -13,7 +13,7 @@ AActor_Base_Character::AActor_Base_Character()
 	Speedrate = 2.0f;			// 속도계수
 	CurrentPawnSpeed = 0.0f;
 	CharState = ECharacterState::Idle;
-
+	GetCharacterMovement()->MaxWalkSpeed = 600.0f;
 	FollowingCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("CAMERA"));
 	CameraBoomNormal = CreateDefaultSubobject<USpringArmComponent>(TEXT("CAMERABOOOMNORMAL"));
 	CameraBoomAiming = CreateDefaultSubobject<USpringArmComponent>(TEXT("CAMERABOOMAIMING"));
@@ -147,23 +147,36 @@ void AActor_Base_Character::UpDown(float NewAxisValue)
 	if (CharState == ECharacterState::StopJump || CharState == ECharacterState::Roll || CharState == ECharacterState::ThrowStart\
 		|| CharState == ECharacterState::ThrowEnd || CharState == ECharacterState::Acquire)	return;
 
+	if (GetMovementComponent()->IsFalling() == true)	CharState = ECharacterState::Jump;
+
 	// 2. perfectly do not use axis value(default state)
-	if (GetVelocity().Size() == 0.0f && GetMovementComponent()->IsFalling() == false)
+	else if (GetMovementComponent()->GetLastInputVector() == FVector(0.0f, 0.0f, 0.0f))
 	{
 		CharState = ECharacterState::Idle;
 	}
 	// 3. use axis valus but are not in the "Jogging" state
-	else if (GetVelocity().Size() != 0.0f && GetMovementComponent()->IsFalling() == true)	CharState = ECharacterState::Jump;
-
+	
 	else
 	{
-		if (CharState == ECharacterState::Walk)	CharState = ECharacterState::Walk;
-		else if (CharState == ECharacterState::Sprint)	CharState = ECharacterState::Sprint;
+		if (CharState == ECharacterState::Walk)
+		{
+			CharState = ECharacterState::Walk;
+			GetCharacterMovement()->MaxWalkSpeed = 300.0f;
+		}
+		else if (CharState == ECharacterState::Sprint)
+		{
+			CharState = ECharacterState::Sprint;
+			GetCharacterMovement()->MaxWalkSpeed = 1200.0f;
+		}
 		else if (CharState == ECharacterState::NormalAiming)	CharState = ECharacterState::NormalAiming;
 		else if (CharState == ECharacterState::WalkAiming)	CharState = ECharacterState::WalkAiming;
 		else if (CharState == ECharacterState::NormalRecall)	CharState = ECharacterState::NormalRecall;
 		else if (CharState == ECharacterState::WalkRecall)	CharState = ECharacterState::WalkRecall;
-		else CharState = ECharacterState::Jogging;
+		else
+		{
+			CharState = ECharacterState::Jogging;
+			GetCharacterMovement()->MaxWalkSpeed = 600.0f;
+		}
 	}
 	/////////////////
 
@@ -186,29 +199,10 @@ void AActor_Base_Character::UpDown(float NewAxisValue)
 
 void AActor_Base_Character::LeftRight(float NewAxisValue)
 {
+	GetMovementComponent()->AddInputVector(FVector(NewAxisValue, 0.0f, 0.0f));
 	// State Part    1. do not "Fully" use axis values
 	if (CharState == ECharacterState::StopJump || CharState == ECharacterState::Roll || CharState == ECharacterState::ThrowStart\
 		|| CharState == ECharacterState::ThrowEnd || CharState == ECharacterState::Acquire)	return;
-
-	// 2. use axis valus but are not in the "Jogging" state
-	if (GetVelocity().Size() == 0.0f && GetMovementComponent()->IsFalling() == false)
-	{
-		CharState = ECharacterState::Idle;
-	}
-	// 3. perfectly do not use axis value(default state)
-	else if (GetVelocity().Size() != 0.0f && GetMovementComponent()->IsFalling() == true)	CharState = ECharacterState::Jump;
-
-	else
-	{
-		if (CharState == ECharacterState::Walk)	CharState = ECharacterState::Walk;
-		else if (CharState == ECharacterState::Sprint)	CharState = ECharacterState::Sprint;
-		else if (CharState == ECharacterState::NormalAiming)	CharState = ECharacterState::NormalAiming;
-		else if (CharState == ECharacterState::WalkAiming)	CharState = ECharacterState::WalkAiming;
-		else if (CharState == ECharacterState::NormalRecall)	CharState = ECharacterState::NormalRecall;
-		else if (CharState == ECharacterState::WalkRecall)	CharState = ECharacterState::WalkRecall;
-		else CharState = ECharacterState::Jogging;
-	}
-	/////////////////
 
 	Speedrate = 2.0f;
 
@@ -256,13 +250,14 @@ void AActor_Base_Character::Jump()
 	if (CharState == ECharacterState::StopJump || CharState == ECharacterState::Roll\
 		|| CharState == ECharacterState::Roll || CharState == ECharacterState::NormalAiming || CharState == ECharacterState::WalkAiming\
 		|| CharState == ECharacterState::ThrowStart || CharState == ECharacterState::ThrowEnd || CharState == ECharacterState::Acquire\
-		|| CharState == ECharacterState::NormalRecall || CharState == ECharacterState::WalkRecall || CharState == ECharacterState::StopSprint)	return;
+ 		|| CharState == ECharacterState::NormalRecall || CharState == ECharacterState::WalkRecall || CharState == ECharacterState::StopSprint)	return;
 	// 2. own state of using the axis values(jump is a unique case, so it is classified into four types)
 	else CharState = ECharacterState::Jump;
 
 	Super::Jump();
 	UE_LOG(LogTemp, Warning, TEXT("Jump"));
 	JumpMaxCount = 2;
+	JumpMaxHoldTime = 0.1f;
 	GetCharacterMovement()->bImpartBaseVelocityZ = 10;
 	GetCharacterMovement()->JumpZVelocity = 800.0f;
 	GetCharacterMovement()->AirControl = 0.20f;
@@ -278,7 +273,7 @@ void AActor_Base_Character::StopJumping()
 void AActor_Base_Character::StartSprint()
 {
 	// State Part    1. can't be overlapped(action)
-	if (CharState == ECharacterState::Idle || CharState == ECharacterState::StopJump || CharState == ECharacterState::Roll\
+	if (CharState == ECharacterState::Idle || CharState == ECharacterState::StopJump || CharState == ECharacterState::Jump || CharState == ECharacterState::Roll\
 		|| CharState == ECharacterState::ThrowStart || CharState == ECharacterState::ThrowEnd || CharState == ECharacterState::Acquire)	return;
 
 	// 2. especially acceptable
@@ -288,14 +283,12 @@ void AActor_Base_Character::StartSprint()
 	// 3. own state of using the axis values(Walk, Jogging)
 	else	CharState = ECharacterState::Sprint;
 	//////////////
-	GetCharacterMovement()->MaxWalkSpeed *= Speedrate;
 	UE_LOG(LogTemp, Warning, L"StartSprint");
 }
 
 void AActor_Base_Character::StopSprint()
 {
 	CharState = ECharacterState::StopSprint;
-	GetCharacterMovement()->MaxWalkSpeed /= Speedrate;
 
 	UE_LOG(LogTemp, Warning, L"StopSprint");
 }
@@ -303,7 +296,7 @@ void AActor_Base_Character::StopSprint()
 void AActor_Base_Character::StartWalk()
 {
 	// State Part    1. can't be overlapped(action)
-	if (CharState == ECharacterState::Idle || CharState == ECharacterState::StopJump\
+	if (CharState == ECharacterState::Idle || CharState == ECharacterState::Jump ||CharState == ECharacterState::StopJump\
 		|| CharState == ECharacterState::Roll || CharState == ECharacterState::ThrowStart || CharState == ECharacterState::ThrowEnd\
 		|| CharState == ECharacterState::Acquire)	return;
 
@@ -314,14 +307,11 @@ void AActor_Base_Character::StartWalk()
 	// 3. own state of using the axis values(Walk, Jogging)
 	else	CharState = ECharacterState::Walk;
 	//////////////
-
-	GetCharacterMovement()->MaxWalkSpeed /= Speedrate;
 }
 
 void AActor_Base_Character::StopWalk()
 {
 	CharState = ECharacterState::Idle;
-	GetCharacterMovement()->MaxWalkSpeed *= Speedrate;
 }
 
 void AActor_Base_Character::Aim()

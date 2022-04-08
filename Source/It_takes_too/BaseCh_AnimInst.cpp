@@ -31,5 +31,7 @@ void UBaseCh_AnimInst::NativeUpdateAnimation(float DeltaSeconds)
 		Angle = Cody->GetAngle();
 		CurrentJumpCount = Cody->GetJumpCount();
 		Throwing = Cody->GetIsThrowing();
+
+
 	}
 }
