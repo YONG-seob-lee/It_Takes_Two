@@ -28,12 +28,6 @@ bool AActor_CodyCh::GetIsThrowing()
 
 void AActor_CodyCh::Throw()
 {
-	if (bIsAimed == false)	return;
-
-	else
-	{
-		IsThrowing = true;
-	}
 }
 
 void AActor_CodyCh::ThrowStop()

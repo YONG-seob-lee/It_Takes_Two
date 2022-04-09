@@ -28,10 +28,11 @@ void UBaseCh_AnimInst::NativeUpdateAnimation(float DeltaSeconds)
 		}
 
 		State = Cody->GetState();
+		SinAngle = Cody->GetSin();
 		Angle = Cody->GetAngle();
 		CurrentJumpCount = Cody->GetJumpCount();
 		Throwing = Cody->GetIsThrowing();
 
-
+		IsMovingOnGround = Cody->GetMovementComponent()->IsMovingOnGround();
 	}
 }

@@ -22,11 +22,19 @@ enum class ECharacterState:uint8
 	Roll,		// 앞구르기
 	NormalAiming,	// 기본 에임자세
 	WalkAiming,		// 천천히 걷는 에임자세
-	ThrowStart,		// 던시는시점부터 못이 코디한테서 떼질때까지
-	ThrowEnd,		// 못이 날아가는와중에 idle로 돌아가는 state
+	Crouch,
+	EndCrouch,
 	Acquire,	// 못 죄다 수집
 	NormalRecall,
 	WalkRecall,
+	ThrowStart,		// 던시는시점부터 못이 코디한테서 떼질때까지
+	ThrowEnd,		// 못이 날아가는와중에 idle로 돌아가는 state
+};
+UENUM()
+enum class AimingMode :uint8
+{
+	Normal,
+	Aiming
 };
 
 UCLASS()
@@ -40,18 +48,13 @@ public:
 	AActor_Base_Character();
 	ECharacterState GetState();
 	float GetPressDirection();
-	bool GetbIsAimed();
 	int32 GetJumpCount();
 	float GetAngle();
+	float GetSin();
 	// 
 
 	//	 Param :   Velocity,  "PressButton" 
-	enum class AimingMode
-	{
-		Normal,
-		Aiming
-	};
-
+	
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -62,11 +65,12 @@ protected:
 	FVector DirectionToMove = FVector::ZeroVector;
 	float CurrentPawnSpeed;
 	float ToGoDir;			// jogging 때 고개 돌리는 방향
-	float Speedrate;		
+	float Speedrate;
+	bool beCrouched;
 
 	float dot;			// 두 변위의 내적
-	float Angle;		// 캐릭터가 바라보는정면 방향과 카메라가 바라보는 정면 방향 사이각
-	bool bIsAimed;			// 에임이 적용되었는지 체크
+	float Angle;			// 에임이 적용되었는지 체크
+	float SinAngle;
 	int32 CheckState;
 
 	FString GetEStateAsString(ECharacterState EnumValue);
@@ -97,6 +101,8 @@ private:
 	virtual void Jump() override;
 	virtual void StopJumping() override;
 	void EndJump();
+
+	void DoCrouch();
 
 	void StartSprint();
 	void StopSprint();
