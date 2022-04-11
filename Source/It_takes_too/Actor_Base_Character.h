@@ -16,14 +16,12 @@ enum class ECharacterState:uint8
 	Walk,
 	Jogging,
 	Sprint,
-	StopSprint,
 	Jump,
 	StopJump,	// 점프를 취소한 시점(점프버튼을 뗀 시점)
 	Roll,		// 앞구르기
 	NormalAiming,	// 기본 에임자세
 	WalkAiming,		// 천천히 걷는 에임자세
 	Crouch,
-	EndCrouch,
 	Acquire,	// 못 죄다 수집
 	NormalRecall,
 	WalkRecall,
@@ -78,6 +76,7 @@ protected:
 	float ToGoDir;			// jogging 때 고개 돌리는 방향
 	float RotateRate;
 	bool IsHoldingWalk;
+	bool IsHoldingSprint;
 	bool beCrouched;
 
 	float dot;				// 두 벡터의 내적
@@ -112,10 +111,11 @@ private:
 	void LookUp(float NewAxisValue);
 	void Turn(float NewAxisValue);
 
-	void StartJump();
 	virtual void Jump() override;
 	virtual void StopJumping() override;
-	void EndJump();
+
+	UFUNCTION()
+	void EndJump(const FHitResult& Hit);
 
 	void DoCrouch();
 	void Roll();

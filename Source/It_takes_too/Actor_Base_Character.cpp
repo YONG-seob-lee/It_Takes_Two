@@ -15,6 +15,7 @@ AActor_Base_Character::AActor_Base_Character()
 	CurrentPawnSpeed = 0.0f;
 	beCrouched = false;
 	IsHoldingWalk = false;
+	IsHoldingSprint = false;
 	TurnDir = ETurn::Center;		// Generally turn left. because Cody is Left-handed 
 	CharState = ECharacterState::Idle;
 	GetCharacterMovement()->MaxWalkSpeed = 600.0f;
@@ -111,6 +112,7 @@ void AActor_Base_Character::SetAimingMode(AimingMode NewAimingMode)
 void AActor_Base_Character::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
+	LandedDelegate.AddDynamic(this, &AActor_Base_Character::EndJump);
 }
 
 FString AActor_Base_Character::GetEStateAsString(ECharacterState EnumValue)
@@ -138,8 +140,8 @@ void AActor_Base_Character::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	//UKismetSystemLibrary::PrintString(GetWorld(), GetEStateAsString(CharState), true, false, FLinearColor::Green, 2.0f);	BP의 PrintString 의 c++형
 	UE_LOG(LogTemp, Warning, TEXT("%s"), *GetEStateAsString(CharState));
+	//UE_LOG(LogTemp, Warning, TEXT("%s"), GetCharacterMovement()->IsFalling() ? TEXT("True") : TEXT("False"));
 }
 
 // Called to bind functionality to input
@@ -167,14 +169,13 @@ void AActor_Base_Character::SetupPlayerInputComponent(UInputComponent* PlayerInp
 void AActor_Base_Character::UpDown(float NewAxisValue)
 {
 	// State Part    1. do not "Fully" use axis values	'wasd'를 아얘 사용 안하는 스테이트
-	if (CharState == ECharacterState::StopJump || CharState == ECharacterState::Roll || CharState == ECharacterState::ThrowStart\
+	if (CharState == ECharacterState::Roll || CharState == ECharacterState::ThrowStart\
 		|| CharState == ECharacterState::ThrowEnd || CharState == ECharacterState::Acquire)	return;
 
 	// 2. Special Case
 	if (GetMovementComponent()->IsFalling() == true)	CharState = ECharacterState::Jump;
 
-//	else if (GetMovementComponent()->IsCrouching() == true)		CharState = ECharacterState::Crouch;
-	else if (CharState == ECharacterState::Crouch)		CharState = ECharacterState::Crouch;
+	else if (GetMovementComponent()->IsCrouching() == true)		CharState = ECharacterState::Crouch;
 	
 	// 3. perfectly do not use axis value(default state)
 	else if (GetMovementComponent()->GetLastInputVector() == FVector(0.0f, 0.0f, 0.0f) && GetMovementComponent()->Velocity.Size() == 0.0f)
@@ -190,11 +191,10 @@ void AActor_Base_Character::UpDown(float NewAxisValue)
 			CharState = ECharacterState::Walk;
 			GetCharacterMovement()->MaxWalkSpeed = 300.0f;
 		}
-		else if (CharState == ECharacterState::Sprint)
+		else if (CharState == ECharacterState::Sprint || IsHoldingSprint == true)
 		{
 			GetCharacterMovement()->MaxWalkSpeed = 1200.0f;
 		}
-		else if (CharState == ECharacterState::Crouch)	CharState = ECharacterState::Crouch;
 		else if (CharState == ECharacterState::NormalAiming)	CharState = ECharacterState::NormalAiming;
 		else if (CharState == ECharacterState::WalkAiming)	CharState = ECharacterState::WalkAiming;
 		else if (CharState == ECharacterState::NormalRecall)	CharState = ECharacterState::NormalRecall;
@@ -231,13 +231,13 @@ void AActor_Base_Character::LeftRight(float NewAxisValue)
 	GetCharacterMovement()->bOrientRotationToMovement = true;
 	RotateRate = 1.0f;
 	// State Part    1. do not "Fully" use axis values	'wasd'를 아얘 사용 안하는 스테이트
-	if (CharState == ECharacterState::StopJump || CharState == ECharacterState::Roll || CharState == ECharacterState::ThrowStart\
+	if (CharState == ECharacterState::Roll || CharState == ECharacterState::ThrowStart\
 		|| CharState == ECharacterState::ThrowEnd || CharState == ECharacterState::Acquire)	return;
 
 	// 2. Special Case
 	if (GetMovementComponent()->IsFalling() == true)	CharState = ECharacterState::Jump;
 
-	else if (CharState == ECharacterState::Crouch)		CharState = ECharacterState::Crouch;
+	else if (GetMovementComponent()->IsCrouching() == true)		CharState = ECharacterState::Crouch;
 
 	// 3. perfectly do not use axis value(default state)
 	else if (GetMovementComponent()->GetLastInputVector() == FVector(0.0f, 0.0f, 0.0f) && GetMovementComponent()->Velocity.Size() == 0.0f)
@@ -247,17 +247,16 @@ void AActor_Base_Character::LeftRight(float NewAxisValue)
 	// 4. use axis valus but are not in the "Jogging" state
 	else
 	{
-		if (CharState == ECharacterState::Walk)
+		if (CharState == ECharacterState::Walk || IsHoldingWalk == true)
 		{
 			GetCharacterMovement()->MaxWalkSpeed = 300.0f;
 		}
-		else if (CharState == ECharacterState::Sprint)
+		else if (CharState == ECharacterState::Sprint || IsHoldingSprint == true)
 		{
 			GetCharacterMovement()->MaxWalkSpeed = 1200.0f;
 			GetCharacterMovement()->bOrientRotationToMovement = false;
 			RotateRate = 0.35f;
 		}
-		else if (CharState == ECharacterState::Crouch)	CharState = ECharacterState::Crouch;
 		else if (CharState == ECharacterState::NormalAiming)	CharState = ECharacterState::NormalAiming;
 		else if (CharState == ECharacterState::WalkAiming)	CharState = ECharacterState::WalkAiming;
 		else if (CharState == ECharacterState::NormalRecall)	CharState = ECharacterState::NormalRecall;
@@ -315,7 +314,7 @@ void AActor_Base_Character::Jump()
 	if (CharState == ECharacterState::StopJump || CharState == ECharacterState::Roll || CharState == ECharacterState::Crouch \
 		|| CharState == ECharacterState::NormalAiming || CharState == ECharacterState::WalkAiming\
 		|| CharState == ECharacterState::ThrowStart || CharState == ECharacterState::ThrowEnd || CharState == ECharacterState::Acquire\
- 		|| CharState == ECharacterState::NormalRecall || CharState == ECharacterState::WalkRecall || CharState == ECharacterState::StopSprint)	return;
+ 		|| CharState == ECharacterState::NormalRecall || CharState == ECharacterState::WalkRecall)	return;
 	// 2. own state of using the axis values(jump is a unique case, so it is classified into four types)
 	else CharState = ECharacterState::Jump;
 
@@ -331,38 +330,42 @@ void AActor_Base_Character::Jump()
 void AActor_Base_Character::StopJumping()
 {
 	Super::StopJumping();
-	if (CharState == ECharacterState::Crouch)	return;
-	CharState = ECharacterState::Idle;
+	UE_LOG(LogTemp, Warning, TEXT("StopJump"));
+}
+
+void AActor_Base_Character::EndJump(const FHitResult& Hit)
+{
 	UE_LOG(LogTemp, Warning, TEXT("EndJump"));
+	if (IsHoldingSprint == true)	CharState = ECharacterState::Sprint;
 }
 
 void AActor_Base_Character::DoCrouch()
 {
 	// State Part    1. can't be overlapped(action)
-	if (CharState == ECharacterState::Sprint || CharState == ECharacterState::StopSprint|| CharState == ECharacterState::Jump\
+	if (CharState == ECharacterState::Sprint || CharState == ECharacterState::Jump\
 		|| CharState == ECharacterState::StopJump || CharState == ECharacterState::Roll\
 		|| CharState == ECharacterState::NormalAiming || CharState == ECharacterState::WalkAiming || CharState == ECharacterState::Acquire\
 		|| CharState == ECharacterState::NormalRecall || CharState == ECharacterState::WalkRecall || CharState == ECharacterState::ThrowStart\
 		|| CharState == ECharacterState::ThrowEnd)	return;
 
-	else if (GetCharacterMovement()->bWantsToCrouch == false)
+	if (GetCharacterMovement()->bWantsToCrouch == false)
 	{
-		CharState = ECharacterState::Crouch;
-		UE_LOG(LogTemp, Warning, TEXT("Crouch"));
+		UE_LOG(LogTemp, Warning, TEXT("DoCrouch"));
 		Crouch();
+		CharState = ECharacterState::Crouch;
 	}
 	else
 	{
-		CharState = ECharacterState::Idle;
 		UE_LOG(LogTemp, Warning, TEXT("UnCrouch"));
 		UnCrouch();
+		CharState = ECharacterState::Idle;
 	}
 }
 
 void AActor_Base_Character::Roll()
 {
 	// State Part    1. can't be overlapped(action)
-	if (CharState == ECharacterState::Roll)	return;
+	if (CharState == ECharacterState::Roll || CharState == ECharacterState::Crouch)	return;
 
 	CharState = ECharacterState::Roll;
 	GetCharacterMovement()->JumpZVelocity = 10.0f;
@@ -383,10 +386,17 @@ void AActor_Base_Character::StartSprint()
 
 	// 2. especially acceptable
 	else if (CharState == ECharacterState::NormalAiming || CharState == ECharacterState::WalkAiming || CharState == ECharacterState::NormalRecall\
-		|| CharState == ECharacterState::WalkRecall)	CharState = ECharacterState::Sprint;
+		|| CharState == ECharacterState::WalkRecall) {
+		CharState = ECharacterState::Sprint;
+		IsHoldingSprint = true;
+	}
 
 	// 3. own state of using the axis values(Walk, Jogging)
-	else	CharState = ECharacterState::Sprint;
+	else
+	{
+		CharState = ECharacterState::Sprint;
+		IsHoldingSprint = true;
+	}
 	//////////////
 	UE_LOG(LogTemp, Warning, L"StartSprint");
 }
@@ -394,8 +404,8 @@ void AActor_Base_Character::StartSprint()
 void AActor_Base_Character::StopSprint()
 {
 	if (CharState == ECharacterState::Crouch)	return;
-	CharState = ECharacterState::StopSprint;
-
+	CharState = ECharacterState::Idle;
+	IsHoldingSprint = false;
 	UE_LOG(LogTemp, Warning, L"StopSprint");
 }
 
@@ -403,7 +413,7 @@ void AActor_Base_Character::StartWalk()
 {
 	// State Part    1. can't be overlapped(action)
 	if (CharState == ECharacterState::Idle || CharState == ECharacterState::Jump ||CharState == ECharacterState::StopJump\
-		|| CharState == ECharacterState::ThrowStart || CharState == ECharacterState::ThrowEnd\
+		|| CharState == ECharacterState::Crouch || CharState == ECharacterState::ThrowStart || CharState == ECharacterState::ThrowEnd\
 		|| CharState == ECharacterState::Acquire)	return;
 
 	// 2. especially acceptable
@@ -443,7 +453,7 @@ void AActor_Base_Character::Aim()
 
 	// 3. especially acceptable(canceled)
 	else if (CharState == ECharacterState::Idle || CharState == ECharacterState::Walk || CharState == ECharacterState::Jogging\
-		|| CharState == ECharacterState::Sprint || CharState == ECharacterState::StopSprint || CharState == ECharacterState::Jump\
+		|| CharState == ECharacterState::Sprint || CharState == ECharacterState::Jump\
 		|| CharState == ECharacterState::NormalRecall || CharState == ECharacterState::WalkRecall)
 	{
 		GetCharacterMovement()->MaxWalkSpeed = 450.0f;
