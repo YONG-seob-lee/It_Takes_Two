@@ -7,6 +7,7 @@
 #include "BaseCh_AnimInst.generated.h"
 
 enum class ECharacterState:uint8;
+enum class ETurn :uint8;
 enum class AimingMode:uint8;
 /**
  *
@@ -18,9 +19,14 @@ class IT_TAKES_TOO_API UBaseCh_AnimInst : public UAnimInstance
 
 private:
 
+	UFUNCTION()
+	void AnimNotify_RollEndCheck();
 public:
 	UBaseCh_AnimInst();
 	virtual void NativeUpdateAnimation(float DeltaSeconds)	 override;
+
+	UFUNCTION()
+		void RollAnimMontage();
 
 private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Pawn, Meta = (AllowPrivateAccess = true))
@@ -41,9 +47,16 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Pawn, Meta = (AllowPrivateAccess = true))
 	bool Throwing;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Pawn, Meta = (AllowPrivateAccess = true))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = EnumClass, Meta = (AllowPrivateAccess = true))
 	ECharacterState State;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = EnumClass, Meta = (AllowPrivateAccess = true))
+	ETurn Turndir;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Pawn, Meta = (AllowPrivateAccess = true))
 	bool IsMovingOnGround;
+
+
+	// AnimMontageInstance
+	UAnimMontage* RollAnimMontageInstance = nullptr;
 };

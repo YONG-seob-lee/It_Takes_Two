@@ -7,7 +7,25 @@
 
 UBaseCh_AnimInst::UBaseCh_AnimInst()
 {
+	static ConstructorHelpers::FObjectFinder<UAnimMontage> RollAnimMontageFinder(TEXT("/Game/BaseCharacter/Animation/Montage/Roll_Montage.Roll_Montage"));
+	if (RollAnimMontageFinder.Succeeded() == false)
+		return;
+	RollAnimMontageInstance = RollAnimMontageFinder.Object;
+
 	CurrentPawnSpeed = 0.0f;
+}
+
+void UBaseCh_AnimInst::RollAnimMontage() {
+	Montage_Play(RollAnimMontageInstance);
+}
+
+void UBaseCh_AnimInst::AnimNotify_RollEndCheck()
+{
+
+	UE_LOG(LogTemp, Warning, L"AnimNotify_RollEndCheck");
+	AActor_CodyCh* Cody = Cast<AActor_CodyCh>(GetOwningActor());
+	
+	Cody->SetEndRoll();
 }
 
 void UBaseCh_AnimInst::NativeUpdateAnimation(float DeltaSeconds)
@@ -28,6 +46,7 @@ void UBaseCh_AnimInst::NativeUpdateAnimation(float DeltaSeconds)
 		}
 
 		State = Cody->GetState();
+		Turndir = Cody->GetTurnDir();
 		SinAngle = Cody->GetSin();
 		Angle = Cody->GetAngle();
 		CurrentJumpCount = Cody->GetJumpCount();

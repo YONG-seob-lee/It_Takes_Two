@@ -30,6 +30,15 @@ enum class ECharacterState:uint8
 	ThrowStart,		// 던시는시점부터 못이 코디한테서 떼질때까지
 	ThrowEnd,		// 못이 날아가는와중에 idle로 돌아가는 state
 };
+
+UENUM()
+enum class ETurn :uint8
+{
+	Center,
+	Right,
+	Left
+};
+
 UENUM()
 enum class AimingMode :uint8
 {
@@ -47,10 +56,12 @@ public:
 	// Sets default values for this character's properties
 	AActor_Base_Character();
 	ECharacterState GetState();
+	ETurn GetTurnDir();
 	float GetPressDirection();
 	int32 GetJumpCount();
 	float GetAngle();
 	float GetSin();
+	void SetEndRoll();
 	// 
 
 	//	 Param :   Velocity,  "PressButton" 
@@ -65,15 +76,19 @@ protected:
 	FVector DirectionToMove = FVector::ZeroVector;
 	float CurrentPawnSpeed;
 	float ToGoDir;			// jogging 때 고개 돌리는 방향
-	float Speedrate;
+	float RotateRate;
+	bool IsHoldingWalk;
 	bool beCrouched;
 
-	float dot;			// 두 변위의 내적
+	float dot;				// 두 벡터의 내적
+	float cross;			// 두 벡터의 외적
+	ETurn TurnDir;			// 방향성 체크
 	float Angle;			// 에임이 적용되었는지 체크
 	float SinAngle;
 	int32 CheckState;
 
 	FString GetEStateAsString(ECharacterState EnumValue);
+	FString GetETurnAtString(ETurn EnumValue);
 
 public:
 	// Called every frame
@@ -103,6 +118,7 @@ private:
 	void EndJump();
 
 	void DoCrouch();
+	void Roll();
 
 	void StartSprint();
 	void StopSprint();

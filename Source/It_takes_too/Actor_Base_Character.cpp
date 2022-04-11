@@ -4,14 +4,18 @@
 #include "Actor_Base_Character.h"
 #include "ABasePawn.h"
 
+#include "BaseCh_AnimInst.h"
+
 // Sets default values
 AActor_Base_Character::AActor_Base_Character()
 {
 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
-	Speedrate = 2.0f;			// 속도계수
+	RotateRate = 1.0f;			// 속도계수
 	CurrentPawnSpeed = 0.0f;
 	beCrouched = false;
+	IsHoldingWalk = false;
+	TurnDir = ETurn::Center;		// Generally turn left. because Cody is Left-handed 
 	CharState = ECharacterState::Idle;
 	GetCharacterMovement()->MaxWalkSpeed = 600.0f;
 	GetCharacterMovement()->MaxWalkSpeedCrouched = 200.0f;
@@ -49,6 +53,11 @@ AActor_Base_Character::AActor_Base_Character()
 ECharacterState AActor_Base_Character::GetState()
 {
 	return CharState;
+}
+
+ETurn AActor_Base_Character::GetTurnDir()
+{
+	return TurnDir;
 }
 
 // Called when the game starts or when spawned
@@ -114,12 +123,22 @@ FString AActor_Base_Character::GetEStateAsString(ECharacterState EnumValue)
 	return enumPtr->GetNameStringByIndex((int32)EnumValue);
 }
 
+FString AActor_Base_Character::GetETurnAtString(ETurn EnumValue)
+{
+	const UEnum* enumPtr = FindObject<UEnum>(ANY_PACKAGE, TEXT("ETurn"), true);
+	if (!enumPtr)
+	{
+		return FString("Invalid");
+	}
+	return enumPtr->GetNameStringByIndex((int32)EnumValue);
+}
+
 // Called every frame
 void AActor_Base_Character::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	//UKismetSystemLibrary::PrintString(GetWorld(), GetEStateAsString(CharState), true, false, FLinearColor::Green, 2.0f);
+	//UKismetSystemLibrary::PrintString(GetWorld(), GetEStateAsString(CharState), true, false, FLinearColor::Green, 2.0f);	BP의 PrintString 의 c++형
 	UE_LOG(LogTemp, Warning, TEXT("%s"), *GetEStateAsString(CharState));
 }
 
@@ -137,6 +156,7 @@ void AActor_Base_Character::SetupPlayerInputComponent(UInputComponent* PlayerInp
 	PlayerInputComponent->BindAction(TEXT("Jump"), EInputEvent::IE_Pressed, this, &AActor_Base_Character::Jump);
 	PlayerInputComponent->BindAction(TEXT("Jump"), EInputEvent::IE_Released, this, &AActor_Base_Character::StopJumping);
 	PlayerInputComponent->BindAction(TEXT("Crouch"), EInputEvent::IE_Pressed, this, &AActor_Base_Character::DoCrouch);
+	PlayerInputComponent->BindAction(TEXT("Roll"), EInputEvent::IE_Pressed, this, &AActor_Base_Character::Roll);
 	
 	PlayerInputComponent->BindAxis(TEXT("UpDown"), this, &AActor_Base_Character::UpDown);
 	PlayerInputComponent->BindAxis(TEXT("LeftRight"), this, &AActor_Base_Character::LeftRight);
@@ -165,8 +185,9 @@ void AActor_Base_Character::UpDown(float NewAxisValue)
 	
 	else
 	{
-		if (CharState == ECharacterState::Walk)
+		if (CharState == ECharacterState::Walk || IsHoldingWalk == true)
 		{
+			CharState = ECharacterState::Walk;
 			GetCharacterMovement()->MaxWalkSpeed = 300.0f;
 		}
 		else if (CharState == ECharacterState::Sprint)
@@ -182,13 +203,12 @@ void AActor_Base_Character::UpDown(float NewAxisValue)
 		{
 			CharState = ECharacterState::Jogging;
 			GetCharacterMovement()->MaxWalkSpeed = 600.0f;
-			if(CheckJumpInput))
 		}
 	}
 	/////////////////
 
 	FVector Direction = FRotationMatrix(Controller->GetControlRotation()).GetScaledAxis(EAxis::X);
-	AddMovementInput(Direction, NewAxisValue * Speedrate);
+	AddMovementInput(Direction, NewAxisValue);
 
 		FVector CurrentContVector = GetPendingMovementInputVector();
 		FVector ActorVector = GetActorForwardVector();
@@ -196,16 +216,20 @@ void AActor_Base_Character::UpDown(float NewAxisValue)
 		FVector2D ActorVector2D = { ActorVector.X, ActorVector.Y };
 		CurrentConVector2D.Normalize();
 		dot = FVector2D::DotProduct(CurrentConVector2D, ActorVector2D);		// 내적을 구함
+		cross = FVector2D::CrossProduct(CurrentConVector2D, ActorVector2D);	// 외적을 구함
 		Angle = FMath::RadiansToDegrees(FMath::Acos(dot));
 		SinAngle = FMath::Sin(Angle);
-
+		if (cross > 0.3f) TurnDir = ETurn::Right;					// 30도로 돌아가면 고개가 돌아감
+		else if (cross < -0.3f)	TurnDir = ETurn::Left;				// -30도로 돌아가면 고개가 돌아감
+		else	TurnDir = ETurn::Center;
 		
-	//	UE_LOG(LogTemp, Warning, TEXT("bePressed : %f, Angle : %f, CurrentV : %s, ActorV : %s"),NewAxisValue, Angle, *CurrentConVector2D.ToString(), *ActorVector2D.ToString());
-	
+		//UE_LOG(LogTemp, Warning, TEXT("Angle : %f, Cross : %f, TurnDir : %s"), Angle, cross,  *GetETurnAtString(TurnDir));
 }
 
 void AActor_Base_Character::LeftRight(float NewAxisValue)
 {
+	GetCharacterMovement()->bOrientRotationToMovement = true;
+	RotateRate = 1.0f;
 	// State Part    1. do not "Fully" use axis values	'wasd'를 아얘 사용 안하는 스테이트
 	if (CharState == ECharacterState::StopJump || CharState == ECharacterState::Roll || CharState == ECharacterState::ThrowStart\
 		|| CharState == ECharacterState::ThrowEnd || CharState == ECharacterState::Acquire)	return;
@@ -221,7 +245,6 @@ void AActor_Base_Character::LeftRight(float NewAxisValue)
 		CharState = ECharacterState::Idle;
 	}
 	// 4. use axis valus but are not in the "Jogging" state
-
 	else
 	{
 		if (CharState == ECharacterState::Walk)
@@ -231,6 +254,8 @@ void AActor_Base_Character::LeftRight(float NewAxisValue)
 		else if (CharState == ECharacterState::Sprint)
 		{
 			GetCharacterMovement()->MaxWalkSpeed = 1200.0f;
+			GetCharacterMovement()->bOrientRotationToMovement = false;
+			RotateRate = 0.35f;
 		}
 		else if (CharState == ECharacterState::Crouch)	CharState = ECharacterState::Crouch;
 		else if (CharState == ECharacterState::NormalAiming)	CharState = ECharacterState::NormalAiming;
@@ -241,13 +266,13 @@ void AActor_Base_Character::LeftRight(float NewAxisValue)
 		{
 			CharState = ECharacterState::Jogging;
 			GetCharacterMovement()->MaxWalkSpeed = 600.0f;
-			//GetCharacterMovement()->GetNavAgentPropertiesRef().bCanCrouch = false;
 		}
 	}
 	/////////////////
+	ToGoDir = NewAxisValue;
 
 	FVector Direction = FRotationMatrix(Controller->GetControlRotation()).GetScaledAxis(EAxis::Y);
-	AddMovementInput(Direction, NewAxisValue * Speedrate);
+	AddMovementInput(Direction, NewAxisValue * RotateRate);
 }
 
 void AActor_Base_Character::LookUp(float NewAxisValue)
@@ -334,6 +359,22 @@ void AActor_Base_Character::DoCrouch()
 	}
 }
 
+void AActor_Base_Character::Roll()
+{
+	// State Part    1. can't be overlapped(action)
+	if (CharState == ECharacterState::Roll)	return;
+
+	CharState = ECharacterState::Roll;
+	GetCharacterMovement()->JumpZVelocity = 10.0f;
+	GetCharacterMovement()->AddForce(GetActorForwardVector() * 2000);
+	UE_LOG(LogTemp, Warning, TEXT("Roll"));
+	if (GetMesh()->GetAnimInstance() == nullptr) {
+		UE_LOG(LogTemp, Warning, L"NULL");
+	}
+
+	Cast<UBaseCh_AnimInst>(GetMesh()->GetAnimInstance())->RollAnimMontage();
+}
+
 void AActor_Base_Character::StartSprint()
 {
 	// State Part    1. can't be overlapped(action)
@@ -362,21 +403,29 @@ void AActor_Base_Character::StartWalk()
 {
 	// State Part    1. can't be overlapped(action)
 	if (CharState == ECharacterState::Idle || CharState == ECharacterState::Jump ||CharState == ECharacterState::StopJump\
-		|| CharState == ECharacterState::Roll || CharState == ECharacterState::ThrowStart || CharState == ECharacterState::ThrowEnd\
+		|| CharState == ECharacterState::ThrowStart || CharState == ECharacterState::ThrowEnd\
 		|| CharState == ECharacterState::Acquire)	return;
 
 	// 2. especially acceptable
 	else if (CharState == ECharacterState::NormalAiming || CharState == ECharacterState::WalkAiming || CharState == ECharacterState::NormalRecall\
-		|| CharState == ECharacterState::WalkRecall)	CharState = ECharacterState::Walk;
+		|| CharState == ECharacterState::WalkRecall)
+	{
+		IsHoldingWalk = true;
+		CharState = ECharacterState::Walk;
+	}
 
 	// 3. own state of using the axis values(Walk, Jogging)
-	else	CharState = ECharacterState::Walk;
+	else {
+		IsHoldingWalk = true;
+		CharState = ECharacterState::Walk;
+	}
 	//////////////
 }
 
 void AActor_Base_Character::StopWalk()
 {
 	CharState = ECharacterState::Idle;
+	IsHoldingWalk = false;
 }
 
 void AActor_Base_Character::Aim()
@@ -447,6 +496,11 @@ float AActor_Base_Character::GetAngle()
 float AActor_Base_Character::GetSin()
 {
 	return SinAngle;
+}
+
+void AActor_Base_Character::SetEndRoll()
+{
+	CharState = ECharacterState::Idle;
 }
 
 
