@@ -13,9 +13,11 @@ AActor_Base_Character::AActor_Base_Character()
 	PrimaryActorTick.bCanEverTick = true;
 	RotateRate = 1.0f;			// 속도계수
 	CurrentPawnSpeed = 0.0f;
+	RotateDirection = 0.0f;
 	beCrouched = false;
 	IsHoldingWalk = false;
 	IsHoldingSprint = false;
+	IsDoubleJumped = false;
 	TurnDir = ETurn::Center;		// Generally turn left. because Cody is Left-handed 
 	CharState = ECharacterState::Idle;
 	GetCharacterMovement()->MaxWalkSpeed = 600.0f;
@@ -96,14 +98,18 @@ void AActor_Base_Character::SetAimingMode(AimingMode NewAimingMode)
 		CameraBoomAiming->TargetArmLength = 300.0f;
 		CameraBoomAiming->SetRelativeRotation(FRotator::ZeroRotator);
 		CameraBoomAiming->bDoCollisionTest = true;
-		CameraBoomAiming->bInheritPitch = true;
+		CameraBoomAiming->bInheritPitch = true;				// Pitch 값을 상속받는다
 		CameraBoomAiming->bInheritRoll = true;
 		CameraBoomAiming->bInheritYaw = true;
 		CameraBoomAiming->bUsePawnControlRotation = true;	// 폰의 회전이 카메라회전에 영향을 안미침
+		CameraBoomAiming->bEnableCameraRotationLag = true;	// 카메라 회전을 smooth 하게 만들어줌
 		bUseControllerRotationYaw = false;						// 컨트롤러의 회전으로 캐릭터가 회전 할 수 있냐/없냐
 		GetCharacterMovement()->bOrientRotationToMovement = false;	// 자동적으로 캐릭터의 이동방향을 움직이는 방향에 맞춰준다.
-		GetCharacterMovement()->bUseControllerDesiredRotation = true;
+		GetCharacterMovement()->bUseControllerDesiredRotation = true;	// 컨트롤러의 방향으로 부드럽게 회전
 		GetCharacterMovement()->RotationRate = FRotator(0.0f, 720.0f, 0.0f);
+		bUseControllerRotationPitch = false;				// 상속받은 Pitch 값에 따라 캐릭터가 따라서 회전하지 못하게 함.
+		bUseControllerRotationYaw = true;
+		bUseControllerRotationRoll = false;
 		break;
 	}
 	}
@@ -173,14 +179,33 @@ void AActor_Base_Character::UpDown(float NewAxisValue)
 		|| CharState == ECharacterState::ThrowEnd || CharState == ECharacterState::Acquire)	return;
 
 	// 2. Special Case
-	if (GetMovementComponent()->IsFalling() == true)	CharState = ECharacterState::Jump;
+	if (GetMovementComponent()->IsFalling() == true && CurrentAimingMode == AimingMode::Normal) {
+		CharState = ECharacterState::Jump;
+		if (JumpCurrentCount == 2)	IsDoubleJumped = true;
+	}
+
+	else if (GetMovementComponent()->IsFalling() == true && CurrentAimingMode == AimingMode::Aiming) {
+		CharState = ECharacterState::JumpAiming;
+		if (JumpCurrentCount == 2)	IsDoubleJumped = true;
+	}
 
 	else if (GetMovementComponent()->IsCrouching() == true)		CharState = ECharacterState::Crouch;
+
+	else if (CurrentAimingMode == AimingMode::Aiming && IsHoldingWalk == true) {
+		CharState = ECharacterState::WalkAiming;
+		GetCharacterMovement()->MaxWalkSpeed = 150.0f;
+	}
+
+	else if (CurrentAimingMode == AimingMode::Aiming && IsHoldingWalk == false) {
+		CharState = ECharacterState::NormalAiming;
+		GetCharacterMovement()->MaxWalkSpeed = 300.0f;
+	}
 	
 	// 3. perfectly do not use axis value(default state)
 	else if (GetMovementComponent()->GetLastInputVector() == FVector(0.0f, 0.0f, 0.0f) && GetMovementComponent()->Velocity.Size() == 0.0f)
 	{
 		CharState = ECharacterState::Idle;
+		IsDoubleJumped = false;
 	}
 	// 4. use axis valus but are not in the "Jogging" state
 	
@@ -189,14 +214,12 @@ void AActor_Base_Character::UpDown(float NewAxisValue)
 		if (CharState == ECharacterState::Walk || IsHoldingWalk == true)
 		{
 			CharState = ECharacterState::Walk;
-			GetCharacterMovement()->MaxWalkSpeed = 300.0f;
+			GetCharacterMovement()->MaxWalkSpeed = 300.0f;	
 		}
 		else if (CharState == ECharacterState::Sprint || IsHoldingSprint == true)
 		{
 			GetCharacterMovement()->MaxWalkSpeed = 1200.0f;
 		}
-		else if (CharState == ECharacterState::NormalAiming)	CharState = ECharacterState::NormalAiming;
-		else if (CharState == ECharacterState::WalkAiming)	CharState = ECharacterState::WalkAiming;
 		else if (CharState == ECharacterState::NormalRecall)	CharState = ECharacterState::NormalRecall;
 		else if (CharState == ECharacterState::WalkRecall)	CharState = ECharacterState::WalkRecall;
 		else
@@ -222,8 +245,6 @@ void AActor_Base_Character::UpDown(float NewAxisValue)
 		if (cross > 0.3f) TurnDir = ETurn::Right;					// 30도로 돌아가면 고개가 돌아감
 		else if (cross < -0.3f)	TurnDir = ETurn::Left;				// -30도로 돌아가면 고개가 돌아감
 		else	TurnDir = ETurn::Center;
-		
-		//UE_LOG(LogTemp, Warning, TEXT("Angle : %f, Cross : %f, TurnDir : %s"), Angle, cross,  *GetETurnAtString(TurnDir));
 }
 
 void AActor_Base_Character::LeftRight(float NewAxisValue)
@@ -235,20 +256,40 @@ void AActor_Base_Character::LeftRight(float NewAxisValue)
 		|| CharState == ECharacterState::ThrowEnd || CharState == ECharacterState::Acquire)	return;
 
 	// 2. Special Case
-	if (GetMovementComponent()->IsFalling() == true)	CharState = ECharacterState::Jump;
+	if (GetMovementComponent()->IsFalling() == true && CurrentAimingMode == AimingMode::Normal){
+		CharState = ECharacterState::Jump;
+		if (JumpCurrentCount == 2)	IsDoubleJumped = true;
+	}
 
-	else if (GetMovementComponent()->IsCrouching() == true)		CharState = ECharacterState::Crouch;
+	else if (GetMovementComponent()->IsFalling() == true && CurrentAimingMode == AimingMode::Aiming){
+		CharState = ECharacterState::JumpAiming;
+		if (JumpCurrentCount == 2)	IsDoubleJumped = true;
+	}
+
+	else if (GetMovementComponent()->IsCrouching() == true) CharState = ECharacterState::Crouch;
+
+	else if (CurrentAimingMode == AimingMode::Aiming && IsHoldingWalk == true) {
+		CharState = ECharacterState::WalkAiming;
+		GetCharacterMovement()->MaxWalkSpeed = 150.0f;
+	}
+
+	else if (CurrentAimingMode == AimingMode::Aiming && IsHoldingWalk == false) {
+		CharState = ECharacterState::NormalAiming;
+		GetCharacterMovement()->MaxWalkSpeed = 300.0f;
+	}
 
 	// 3. perfectly do not use axis value(default state)
 	else if (GetMovementComponent()->GetLastInputVector() == FVector(0.0f, 0.0f, 0.0f) && GetMovementComponent()->Velocity.Size() == 0.0f)
 	{
 		CharState = ECharacterState::Idle;
+		IsDoubleJumped = false;
 	}
 	// 4. use axis valus but are not in the "Jogging" state
 	else
 	{
 		if (CharState == ECharacterState::Walk || IsHoldingWalk == true)
 		{
+			CharState = ECharacterState::Walk;
 			GetCharacterMovement()->MaxWalkSpeed = 300.0f;
 		}
 		else if (CharState == ECharacterState::Sprint || IsHoldingSprint == true)
@@ -257,8 +298,6 @@ void AActor_Base_Character::LeftRight(float NewAxisValue)
 			GetCharacterMovement()->bOrientRotationToMovement = false;
 			RotateRate = 0.35f;
 		}
-		else if (CharState == ECharacterState::NormalAiming)	CharState = ECharacterState::NormalAiming;
-		else if (CharState == ECharacterState::WalkAiming)	CharState = ECharacterState::WalkAiming;
 		else if (CharState == ECharacterState::NormalRecall)	CharState = ECharacterState::NormalRecall;
 		else if (CharState == ECharacterState::WalkRecall)	CharState = ECharacterState::WalkRecall;
 		else
@@ -268,6 +307,7 @@ void AActor_Base_Character::LeftRight(float NewAxisValue)
 		}
 	}
 	/////////////////
+	RotateDirection = NewAxisValue * 180.0f;
 	ToGoDir = NewAxisValue;
 
 	FVector Direction = FRotationMatrix(Controller->GetControlRotation()).GetScaledAxis(EAxis::Y);
@@ -342,7 +382,7 @@ void AActor_Base_Character::EndJump(const FHitResult& Hit)
 void AActor_Base_Character::DoCrouch()
 {
 	// State Part    1. can't be overlapped(action)
-	if (CharState == ECharacterState::Sprint || CharState == ECharacterState::Jump\
+	if (CharState == ECharacterState::Sprint || CharState == ECharacterState::Jump || CharState == ECharacterState::JumpAiming\
 		|| CharState == ECharacterState::StopJump || CharState == ECharacterState::Roll\
 		|| CharState == ECharacterState::NormalAiming || CharState == ECharacterState::WalkAiming || CharState == ECharacterState::Acquire\
 		|| CharState == ECharacterState::NormalRecall || CharState == ECharacterState::WalkRecall || CharState == ECharacterState::ThrowStart\
@@ -381,8 +421,9 @@ void AActor_Base_Character::Roll()
 void AActor_Base_Character::StartSprint()
 {
 	// State Part    1. can't be overlapped(action)
-	if (CharState == ECharacterState::Idle || CharState == ECharacterState::StopJump || CharState == ECharacterState::Jump || CharState == ECharacterState::Roll\
-		|| CharState == ECharacterState::Crouch || CharState == ECharacterState::ThrowStart || CharState == ECharacterState::ThrowEnd || CharState == ECharacterState::Acquire)	return;
+	if (CharState == ECharacterState::Idle || CharState == ECharacterState::StopJump || CharState == ECharacterState::Jump\
+		|| CharState == ECharacterState::JumpAiming || CharState == ECharacterState::Roll || CharState == ECharacterState::Crouch\
+		|| CharState == ECharacterState::ThrowStart || CharState == ECharacterState::ThrowEnd || CharState == ECharacterState::Acquire)	return;
 
 	// 2. especially acceptable
 	else if (CharState == ECharacterState::NormalAiming || CharState == ECharacterState::WalkAiming || CharState == ECharacterState::NormalRecall\
@@ -413,12 +454,18 @@ void AActor_Base_Character::StartWalk()
 {
 	// State Part    1. can't be overlapped(action)
 	if (CharState == ECharacterState::Idle || CharState == ECharacterState::Jump ||CharState == ECharacterState::StopJump\
-		|| CharState == ECharacterState::Crouch || CharState == ECharacterState::ThrowStart || CharState == ECharacterState::ThrowEnd\
-		|| CharState == ECharacterState::Acquire)	return;
+		|| CharState == ECharacterState::JumpAiming || CharState == ECharacterState::Crouch || CharState == ECharacterState::ThrowStart\
+		|| CharState == ECharacterState::ThrowEnd || CharState == ECharacterState::Acquire)	return;
+
+	else if (CharState == ECharacterState::NormalAiming || CharState == ECharacterState::WalkAiming)
+	{
+		IsHoldingWalk = true;
+		CharState = ECharacterState::WalkAiming;
+	}
 
 	// 2. especially acceptable
-	else if (CharState == ECharacterState::NormalAiming || CharState == ECharacterState::WalkAiming || CharState == ECharacterState::NormalRecall\
-		|| CharState == ECharacterState::WalkRecall)
+	else if (CharState == ECharacterState::NormalAiming || CharState == ECharacterState::WalkAiming\
+		|| CharState == ECharacterState::NormalRecall || CharState == ECharacterState::WalkRecall)
 	{
 		IsHoldingWalk = true;
 		CharState = ECharacterState::Walk;
@@ -440,35 +487,21 @@ void AActor_Base_Character::StopWalk()
 
 void AActor_Base_Character::Aim()
 {
+	SetAimingMode(AimingMode::Aiming);
 
 	// State Part    1. can't be overlapped(action)
-	if (CharState == ECharacterState::Roll || CharState == ECharacterState::Crouch || CharState == ECharacterState::StopJump\
-		|| CharState == ECharacterState::ThrowStart|| CharState == ECharacterState::ThrowEnd || CharState == ECharacterState::Acquire)	return;
-	// 2. special case
-	else if (CharState == ECharacterState::Walk)
-	{
-		GetCharacterMovement()->MaxWalkSpeed = 200.0f;
-		CharState = ECharacterState::WalkAiming;
-	}
-
-	// 3. especially acceptable(canceled)
-	else if (CharState == ECharacterState::Idle || CharState == ECharacterState::Walk || CharState == ECharacterState::Jogging\
-		|| CharState == ECharacterState::Sprint || CharState == ECharacterState::Jump\
-		|| CharState == ECharacterState::NormalRecall || CharState == ECharacterState::WalkRecall)
-	{
-		GetCharacterMovement()->MaxWalkSpeed = 450.0f;
-		CharState = ECharacterState::NormalAiming;
-	}
-	// 4.  own state of using the axis values(Walk, Jogging)
+	if (CharState == ECharacterState::Sprint || CharState == ECharacterState::Roll || CharState == ECharacterState::Crouch\
+		|| CharState == ECharacterState::StopJump || CharState == ECharacterState::ThrowStart || CharState == ECharacterState::ThrowEnd\
+		|| CharState == ECharacterState::Acquire)	return;
+	
 	else
 	{
-		GetCharacterMovement()->MaxWalkSpeed = 450.0f;
-		CharState = ECharacterState::NormalAiming;
+		if (IsHoldingWalk == true)	CharState = ECharacterState::WalkAiming;
+		else	CharState = ECharacterState::NormalAiming;
 	}
 	//////////////
 	UE_LOG(LogTemp, Warning, TEXT("Aim"));
 
-	SetAimingMode(AimingMode::Aiming);
 	FLatentActionInfo LatentInfo;
 	LatentInfo.CallbackTarget = this;
 	FollowingCamera->AttachToComponent(CameraBoomAiming, FAttachmentTransformRules::KeepWorldTransform);
@@ -478,6 +511,7 @@ void AActor_Base_Character::Aim()
 
 void AActor_Base_Character::StopAim()
 {
+	SetAimingMode(AimingMode::Normal);
 	UE_LOG(LogTemp, Warning, TEXT("AimStop"));
 	CharState = ECharacterState::Idle;
 
@@ -485,7 +519,6 @@ void AActor_Base_Character::StopAim()
 	LatentInfo.CallbackTarget = this;
 	FollowingCamera->AttachToComponent(CameraBoomNormal, FAttachmentTransformRules::KeepWorldTransform);
 	UKismetSystemLibrary::MoveComponentTo(FollowingCamera, FVector(0.0f, 0.0f, 0.0f), FRotator(0.0f, 0.0f, 0.0f), true, true, 0.2, false, EMoveComponentAction::Type::Move, LatentInfo);
-	SetAimingMode(AimingMode::Normal);
 }
 
 float AActor_Base_Character::GetPressDirection()
@@ -506,6 +539,16 @@ float AActor_Base_Character::GetAngle()
 float AActor_Base_Character::GetSin()
 {
 	return SinAngle;
+}
+
+float AActor_Base_Character::GetRotateDirection()
+{
+	return RotateDirection;
+}
+
+bool AActor_Base_Character::GetDoubleJumped()
+{
+	return IsDoubleJumped;
 }
 
 void AActor_Base_Character::SetEndRoll()

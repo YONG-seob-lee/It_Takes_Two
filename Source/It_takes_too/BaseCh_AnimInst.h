@@ -47,11 +47,20 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Pawn, Meta = (AllowPrivateAccess = true))
 	bool Throwing;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Pawn, Meta = (AllowPrivateAccess = true))
+	float Direction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Pawn, Meta = (AllowPrivateAccess = true))
+	bool IsDoubleJumped;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = EnumClass, Meta = (AllowPrivateAccess = true))
 	ECharacterState State;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = EnumClass, Meta = (AllowPrivateAccess = true))
 	ETurn Turndir;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = EnumClass, Meta = (AllowPrivateAccess = true))
+	AimingMode AimState;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Pawn, Meta = (AllowPrivateAccess = true))
 	bool IsMovingOnGround;

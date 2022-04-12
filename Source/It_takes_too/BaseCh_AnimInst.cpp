@@ -44,14 +44,14 @@ void UBaseCh_AnimInst::NativeUpdateAnimation(float DeltaSeconds)
 		{
 			JogDirection = Cody->GetPressDirection();	// Á¶±ë È®ÀÎ
 		}
-
 		State = Cody->GetState();
 		Turndir = Cody->GetTurnDir();
 		SinAngle = Cody->GetSin();
 		Angle = Cody->GetAngle();
 		CurrentJumpCount = Cody->GetJumpCount();
+		IsDoubleJumped = Cody->GetDoubleJumped();
 		Throwing = Cody->GetIsThrowing();
-
+		Direction = Cody->GetRotateDirection();
 		IsMovingOnGround = Cody->GetMovementComponent()->IsMovingOnGround();
 	}
 }

@@ -21,6 +21,7 @@ enum class ECharacterState:uint8
 	Roll,		// 앞구르기
 	NormalAiming,	// 기본 에임자세
 	WalkAiming,		// 천천히 걷는 에임자세
+	JumpAiming,	// 점프 에임자세
 	Crouch,
 	Acquire,	// 못 죄다 수집
 	NormalRecall,
@@ -59,6 +60,8 @@ public:
 	int32 GetJumpCount();
 	float GetAngle();
 	float GetSin();
+	float GetRotateDirection();
+	bool GetDoubleJumped();
 	void SetEndRoll();
 	// 
 
@@ -77,10 +80,12 @@ protected:
 	float RotateRate;
 	bool IsHoldingWalk;
 	bool IsHoldingSprint;
+	bool IsDoubleJumped;
 	bool beCrouched;
 
 	float dot;				// 두 벡터의 내적
 	float cross;			// 두 벡터의 외적
+	float RotateDirection;
 	ETurn TurnDir;			// 방향성 체크
 	float Angle;			// 에임이 적용되었는지 체크
 	float SinAngle;
