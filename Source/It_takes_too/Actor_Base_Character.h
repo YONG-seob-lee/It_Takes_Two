@@ -28,6 +28,7 @@ enum class ECharacterState:uint8
 	WalkRecall,
 	ThrowStart,		// 던시는시점부터 못이 코디한테서 떼질때까지
 	ThrowEnd,		// 못이 날아가는와중에 idle로 돌아가는 state
+	Hammering,		// MAY가 해머를 가지고 공격하고있는 state
 };
 
 UENUM()
