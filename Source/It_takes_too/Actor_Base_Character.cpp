@@ -38,19 +38,21 @@ AActor_Base_Character::AActor_Base_Character()
 
 	SetAimingMode(AimingMode::Normal);
 
-	static ConstructorHelpers::FObjectFinder<USkeletalMesh> SK_CODY(TEXT("SkeletalMesh'/Game/BaseCharacter/untitled.untitled'"));
-	if (SK_CODY.Succeeded())
-	{
-		GetMesh()->SetSkeletalMesh(SK_CODY.Object);
-	}
+	// 자식 클래스에서 따로 입히는 중
 
-	GetMesh()->SetAnimationMode(EAnimationMode::AnimationBlueprint);
+	//static ConstructorHelpers::FObjectFinder<USkeletalMesh> SK_CODY(TEXT("SkeletalMesh'/Game/BaseCharacter/untitled.untitled'"));
+	//if (SK_CODY.Succeeded())
+	//{
+	//	GetMesh()->SetSkeletalMesh(SK_CODY.Object);
+	//}
 
-	static ConstructorHelpers::FClassFinder<UAnimInstance> CODY_IDLE_ANIM(TEXT("/Game/BaseCharacter/Blueprints/ActorAnim_BP.ActorAnim_BP_C"));
-	if (CODY_IDLE_ANIM.Succeeded())
-	{
-		GetMesh()->SetAnimInstanceClass(CODY_IDLE_ANIM.Class);
-	}
+	//GetMesh()->SetAnimationMode(EAnimationMode::AnimationBlueprint);
+
+	//static ConstructorHelpers::FClassFinder<UAnimInstance> CODY_IDLE_ANIM(TEXT("/Game/BaseCharacter/Blueprints/ActorAnim_BP.ActorAnim_BP_C"));
+	//if (CODY_IDLE_ANIM.Succeeded())
+	//{
+	//	GetMesh()->SetAnimInstanceClass(CODY_IDLE_ANIM.Class);
+	//}
 }
 
 ECharacterState AActor_Base_Character::GetState()
