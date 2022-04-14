@@ -38,19 +38,19 @@ AActor_Base_Character::AActor_Base_Character()
 
 	SetAimingMode(AimingMode::Normal);
 
-	static ConstructorHelpers::FObjectFinder<USkeletalMesh> SK_CODY(TEXT("SkeletalMesh'/Game/BaseCharacter/untitled.untitled'"));
-	if (SK_CODY.Succeeded())
-	{
-		GetMesh()->SetSkeletalMesh(SK_CODY.Object);
-	}
+	// static ConstructorHelpers::FObjectFinder<USkeletalMesh> SK_CODY(TEXT("SkeletalMesh'/Game/BaseCharacter/untitled.untitled'"));
+	// if (SK_CODY.Succeeded())
+	// {
+	// 	GetMesh()->SetSkeletalMesh(SK_CODY.Object);
+	// }
 
-	GetMesh()->SetAnimationMode(EAnimationMode::AnimationBlueprint);
+	// GetMesh()->SetAnimationMode(EAnimationMode::AnimationBlueprint);
 
-	static ConstructorHelpers::FClassFinder<UAnimInstance> CODY_IDLE_ANIM(TEXT("/Game/BaseCharacter/Blueprints/ActorAnim_BP.ActorAnim_BP_C"));
-	if (CODY_IDLE_ANIM.Succeeded())
-	{
-		GetMesh()->SetAnimInstanceClass(CODY_IDLE_ANIM.Class);
-	}
+	// static ConstructorHelpers::FClassFinder<UAnimInstance> CODY_IDLE_ANIM(TEXT("/Game/BaseCharacter/Blueprints/ActorAnim_BP.ActorAnim_BP_C"));
+	// if (CODY_IDLE_ANIM.Succeeded())
+	// {
+	// 	GetMesh()->SetAnimInstanceClass(CODY_IDLE_ANIM.Class);
+	// }
 }
 
 ECharacterState AActor_Base_Character::GetState()
@@ -174,7 +174,7 @@ void AActor_Base_Character::UpDown(float NewAxisValue)
 {
 	// State Part    1. do not "Fully" use axis values	'wasd'를 아얘 사용 안하는 스테이트
 	if (CharState == ECharacterState::Roll || CharState == ECharacterState::ThrowStart\
-		|| CharState == ECharacterState::ThrowEnd || CharState == ECharacterState::Acquire)	return;
+		|| CharState == ECharacterState::ThrowEnd || CharState == ECharacterState::Acquire || CharState == ECharacterState::Hammering)	return;
 
 	// 2. Special Case
 	if (GetMovementComponent()->IsFalling() == true && CurrentAimingMode == AimingMode::Normal) {
@@ -251,7 +251,7 @@ void AActor_Base_Character::LeftRight(float NewAxisValue)
 	RotateRate = 1.0f;
 	// State Part    1. do not "Fully" use axis values	'wasd'를 아얘 사용 안하는 스테이트
 	if (CharState == ECharacterState::Roll || CharState == ECharacterState::ThrowStart\
-		|| CharState == ECharacterState::ThrowEnd || CharState == ECharacterState::Acquire)	return;
+		|| CharState == ECharacterState::ThrowEnd || CharState == ECharacterState::Acquire || CharState == ECharacterState::Hammering)	return;
 
 	// 2. Special Case
 	if (GetMovementComponent()->IsFalling() == true && CurrentAimingMode == AimingMode::Normal){
@@ -352,7 +352,7 @@ void AActor_Base_Character::Jump()
 	if (CharState == ECharacterState::StopJump || CharState == ECharacterState::Roll || CharState == ECharacterState::Crouch \
 		|| CharState == ECharacterState::NormalAiming || CharState == ECharacterState::WalkAiming\
 		|| CharState == ECharacterState::ThrowStart || CharState == ECharacterState::ThrowEnd || CharState == ECharacterState::Acquire\
- 		|| CharState == ECharacterState::NormalRecall || CharState == ECharacterState::WalkRecall)	return;
+ 		|| CharState == ECharacterState::NormalRecall || CharState == ECharacterState::WalkRecall || CharState == ECharacterState::Hammering)	return;
 	// 2. own state of using the axis values(jump is a unique case, so it is classified into four types)
 	else CharState = ECharacterState::Jump;
 
@@ -384,7 +384,7 @@ void AActor_Base_Character::DoCrouch()
 		|| CharState == ECharacterState::StopJump || CharState == ECharacterState::Roll\
 		|| CharState == ECharacterState::NormalAiming || CharState == ECharacterState::WalkAiming || CharState == ECharacterState::Acquire\
 		|| CharState == ECharacterState::NormalRecall || CharState == ECharacterState::WalkRecall || CharState == ECharacterState::ThrowStart\
-		|| CharState == ECharacterState::ThrowEnd)	return;
+		|| CharState == ECharacterState::ThrowEnd || CharState == ECharacterState::Hammering)	return;
 
 	if (GetCharacterMovement()->bWantsToCrouch == false)
 	{
@@ -403,7 +403,7 @@ void AActor_Base_Character::DoCrouch()
 void AActor_Base_Character::Roll()
 {
 	// State Part    1. can't be overlapped(action)
-	if (CharState == ECharacterState::Roll || CharState == ECharacterState::Crouch)	return;
+	if (CharState == ECharacterState::Roll || CharState == ECharacterState::Crouch || CharState == ECharacterState::Hammering)	return;
 
 	CharState = ECharacterState::Roll;
 	GetCharacterMovement()->JumpZVelocity = 10.0f;
@@ -420,7 +420,7 @@ void AActor_Base_Character::StartSprint()
 	// State Part    1. can't be overlapped(action)
 	if (CharState == ECharacterState::Idle || CharState == ECharacterState::StopJump || CharState == ECharacterState::Jump\
 		|| CharState == ECharacterState::JumpAiming || CharState == ECharacterState::Roll || CharState == ECharacterState::Crouch\
-		|| CharState == ECharacterState::ThrowStart || CharState == ECharacterState::ThrowEnd || CharState == ECharacterState::Acquire)	return;
+		|| CharState == ECharacterState::ThrowStart || CharState == ECharacterState::ThrowEnd || CharState == ECharacterState::Acquire || CharState == ECharacterState::Hammering)	return;
 
 	// 2. especially acceptable
 	else if (CharState == ECharacterState::NormalAiming || CharState == ECharacterState::WalkAiming || CharState == ECharacterState::NormalRecall\
@@ -452,7 +452,7 @@ void AActor_Base_Character::StartWalk()
 	// State Part    1. can't be overlapped(action)
 	if (CharState == ECharacterState::Idle || CharState == ECharacterState::Jump ||CharState == ECharacterState::StopJump\
 		|| CharState == ECharacterState::JumpAiming || CharState == ECharacterState::Crouch || CharState == ECharacterState::ThrowStart\
-		|| CharState == ECharacterState::ThrowEnd || CharState == ECharacterState::Acquire)	return;
+		|| CharState == ECharacterState::ThrowEnd || CharState == ECharacterState::Acquire || CharState == ECharacterState::Hammering)	return;
 
 	else if (CharState == ECharacterState::NormalAiming || CharState == ECharacterState::WalkAiming)
 	{

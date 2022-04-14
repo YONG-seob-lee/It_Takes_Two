@@ -4,6 +4,7 @@
 #include "BaseCh_AnimInst.h"
 #include "../Character/Actor_Base_Character.h"
 #include "../Character/Actor_CodyCh.h"
+#include "../Character/Actor_MayCh.h"
 
 UBaseCh_AnimInst::UBaseCh_AnimInst()
 {
@@ -52,5 +53,25 @@ void UBaseCh_AnimInst::NativeUpdateAnimation(float DeltaSeconds)
 		IsDoubleJumped = Cody->GetDoubleJumped();
 		Direction = Cody->GetRotateDirection();
 		IsMovingOnGround = Cody->GetMovementComponent()->IsMovingOnGround();
+	}
+
+	AActor_MayCh* May = Cast<AActor_MayCh>(GetOwningActor());
+	if (IsValid(May))
+	{
+		CurrentPawnSpeed = May->GetVelocity().Size();
+		JogDirection = May->GetPressDirection();
+
+		if (JogDirection != 0.0f)
+		{
+			JogDirection = May->GetPressDirection();	// ?¢Ò¡¾? ?¢ç??
+		}
+		State = May->GetState();
+		Turndir = May->GetTurnDir();
+		SinAngle = May->GetSin();
+		Angle = May->GetAngle();
+		CurrentJumpCount = May->GetJumpCount();
+		IsDoubleJumped = May->GetDoubleJumped();
+		Direction = May->GetRotateDirection();
+		IsMovingOnGround = May->GetMovementComponent()->IsMovingOnGround();
 	}
 }

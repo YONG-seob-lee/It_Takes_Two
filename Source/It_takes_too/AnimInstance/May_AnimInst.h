@@ -4,14 +4,18 @@
 
 #include "CoreMinimal.h"
 #include "BaseCh_AnimInst.h"
-#include "May_AnimInst.generated.h"
+#include "MayCh_AnimInst.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class IT_TAKES_TOO_API UMay_AnimInst : public UBaseCh_AnimInst
+class IT_TAKES_TOO_API UMayCh_AnimInst : public UBaseCh_AnimInst
 {
 	GENERATED_BODY()
-	
+
+private:
+
+	UFUNCTION()
+	void AnimNotify_HammeringEndCheck();
 };
