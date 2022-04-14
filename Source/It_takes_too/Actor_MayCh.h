@@ -21,9 +21,11 @@ public:
 	UPROPERTY(VisibleAnywhere, Category = Weapon)
 	USkeletalMeshComponent* Hammer;
 
+	void HammeringEnd();
+
 protected:
 	bool IsHaveHammer;
 
 private:
-	void Hammering();
+	void Hammering();	
 };

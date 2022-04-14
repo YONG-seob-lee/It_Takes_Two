@@ -19,7 +19,7 @@ AActor_MayCh::AActor_MayCh()
 		GetMesh()->SetAnimInstanceClass(ANIM_MAY.Class);
 	}
 
-	FName HammerSocket(L"Spine2");
+	FName HammerSocket(L"Backpack_end");
 	if (GetMesh()->DoesSocketExist(HammerSocket))
 	{
 		Hammer = CreateDefaultSubobject<USkeletalMeshComponent>(L"WEAPON");
@@ -30,7 +30,7 @@ AActor_MayCh::AActor_MayCh()
 		}
 
 		Hammer->SetupAttachment(GetMesh(), HammerSocket);
-		Hammer->SetRelativeLocationAndRotation(FVector(-0.1f, 0.0f, 0.0f), FRotator(270.0f, 180.0f, 0.0f));
+		Hammer->SetRelativeLocationAndRotation(FVector(0.0f, 0.0f, 0.0f), FRotator(270.0f, 180.0f, 0.0f));
 		Hammer->SetRelativeScale3D(FVector(0.01f, 0.01f, 0.01f));
 	}
 }
@@ -44,6 +44,14 @@ void AActor_MayCh::SetupPlayerInputComponent(class UInputComponent* PlayerInputC
 
 void AActor_MayCh::Hammering()
 {
+	if (!(CharState == ECharacterState::Idle)) return;
+
 	UE_LOG(LogTemp, Warning, L"HammeringLog");
 	CharState = ECharacterState::Hammering;
+}
+
+void AActor_MayCh::HammeringEnd()
+{
+	UE_LOG(LogTemp, Warning, L"HammeringEndLog");
+	CharState = ECharacterState::Idle;
 }
