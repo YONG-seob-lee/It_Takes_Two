@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "BaseCh_AnimInst.h"
-#include "MayCh_AnimInst.generated.h"
+#include "May_AnimInst.generated.h"
 
 /**
  * 
