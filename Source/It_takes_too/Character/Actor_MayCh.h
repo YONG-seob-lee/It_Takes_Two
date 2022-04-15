@@ -26,6 +26,7 @@ protected:
 
 private:
 	void Hammering();
+	void NailSwing();
 public:
 	void HammeringEnd();
 

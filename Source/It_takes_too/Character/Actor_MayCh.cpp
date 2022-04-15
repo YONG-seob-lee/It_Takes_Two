@@ -2,6 +2,7 @@
 
 
 #include "Actor_MayCh.h"
+#include "../AnimInstance/May_AnimInst.h"
 
 AActor_MayCh::AActor_MayCh()
 {
@@ -40,6 +41,7 @@ void AActor_MayCh::SetupPlayerInputComponent(class UInputComponent* PlayerInputC
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
 	PlayerInputComponent->BindAction(TEXT("Hammering"), EInputEvent::IE_Pressed, this, &AActor_MayCh::Hammering);
+	PlayerInputComponent->BindAction(TEXT("NailSwing"), EInputEvent::IE_Pressed, this, &AActor_MayCh::NailSwing);
 }
 
 void AActor_MayCh::Hammering()
@@ -48,6 +50,22 @@ void AActor_MayCh::Hammering()
 
 	UE_LOG(LogTemp, Warning, L"HammeringLog");
 	CharState = ECharacterState::Hammering;
+}
+
+void AActor_MayCh::NailSwing()
+{
+	if (CharState == ECharacterState::Idle) return;
+
+	if (CharState != ECharacterState::NailSwing)
+	{
+		UE_LOG(LogTemp, Warning, L"NailSwingLog");
+		CharState = ECharacterState::NailSwing;
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, L"NailSwingEndLog");
+		CharState = ECharacterState::Idle;
+	}	
 }
 
 void AActor_MayCh::HammeringEnd()
