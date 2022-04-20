@@ -34,7 +34,7 @@ ABasePawn::ABasePawn()
 
 	Mesh->SetAnimationMode(EAnimationMode::AnimationBlueprint);
 
-	static ConstructorHelpers::FClassFinder<UAnimInstance> CODY_IDLE_ANIM(TEXT("/Game/BaseCharacter/Blueprints/ActorAnim_BP.ActorAnim_BP_C"));
+	static ConstructorHelpers::FClassFinder<UAnimInstance> CODY_IDLE_ANIM(TEXT("/Game/Blueprints/BaseAnim_BP.BaseAnim_BP_C"));
 	if (CODY_IDLE_ANIM.Succeeded())
 	{
 		Mesh->SetAnimInstanceClass(CODY_IDLE_ANIM.Class);
