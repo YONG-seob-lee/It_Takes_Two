@@ -8,7 +8,10 @@
 
 AITT_GameMode::AITT_GameMode()
 {
+<<<<<<< HEAD
 	//DefaultPawnClass = AActor_Base_Character::StaticClass();
+=======
+>>>>>>> dabc9494911cf9650bee4da0bbbbb1e542191f82
 	DefaultPawnClass = AActor_CodyCh::StaticClass();
 	PlayerControllerClass = AFirstPlayerController::StaticClass();
 }

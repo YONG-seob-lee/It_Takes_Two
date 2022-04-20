@@ -24,7 +24,11 @@ public:
 	virtual void NativeUpdateAnimation(float DeltaSeconds)	 override;
 
 	UFUNCTION()
+<<<<<<< HEAD
 	void RollAnimMontage();
+=======
+		void RollAnimMontage();
+>>>>>>> dabc9494911cf9650bee4da0bbbbb1e542191f82
 
 private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Pawn, Meta = (AllowPrivateAccess = true))

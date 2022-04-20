@@ -21,8 +21,12 @@ public:
 	AActor_CodyCh();
 	virtual void PostInitializeComponents() override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+<<<<<<< HEAD
 	virtual void Tick(float DeltaTime) override;
 	virtual void BeginPlay() override;
+=======
+
+>>>>>>> dabc9494911cf9650bee4da0bbbbb1e542191f82
 	void ThrowStop();
 
 protected:
@@ -33,7 +37,10 @@ private:
 	void Aim();
 	void StopAim();
 
+<<<<<<< HEAD
 public:
 	void PostInit();
 	APlayerController* Cody;
+=======
+>>>>>>> dabc9494911cf9650bee4da0bbbbb1e542191f82
 };

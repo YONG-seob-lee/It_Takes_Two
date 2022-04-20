@@ -4,7 +4,10 @@
 
 #include "../It_takes_too.h"
 #include "GameFramework/PlayerController.h"
+<<<<<<< HEAD
 #include "../Character/Actor_CodyCh.h"
+=======
+>>>>>>> dabc9494911cf9650bee4da0bbbbb1e542191f82
 #include "FirstPlayerController.generated.h"
 
 /**
@@ -16,6 +19,7 @@ class IT_TAKES_TOO_API AFirstPlayerController : public APlayerController
 	GENERATED_BODY()
 
 public:
+<<<<<<< HEAD
 	AFirstPlayerController();
 
 	virtual void PostInitializeComponents() override;
@@ -34,4 +38,11 @@ public:
 
 	AActor_CodyCh* Owner = nullptr;
 	void GetBind(AActor_CodyCh* Target);
+=======
+	virtual void PostInitializeComponents() override;
+	virtual void OnPossess(APawn* aPawn) override;
+
+protected:
+	virtual void BeginPlay() override;
+>>>>>>> dabc9494911cf9650bee4da0bbbbb1e542191f82
 };

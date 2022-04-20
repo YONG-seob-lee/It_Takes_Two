@@ -28,6 +28,11 @@ enum class ECharacterState:uint8
 	WalkRecall,
 	ThrowStart,		// 던시는시점부터 못이 코디한테서 떼질때까지
 	ThrowEnd,		// 못이 날아가는와중에 idle로 돌아가는 state
+<<<<<<< HEAD
+=======
+	Hammering,		// MAY가 해머를 가지고 공격하고있는 state
+	NailSwing,		// MAY 못에 해머를 달아 매달리는 State
+>>>>>>> dabc9494911cf9650bee4da0bbbbb1e542191f82
 };
 
 UENUM()
@@ -63,8 +68,11 @@ public:
 	float GetRotateDirection();
 	bool GetDoubleJumped();
 	void SetEndRoll();
+<<<<<<< HEAD
 
 	AimingMode CurrentAimingMode;
+=======
+>>>>>>> dabc9494911cf9650bee4da0bbbbb1e542191f82
 	// 
 
 	//	 Param :   Velocity,  "PressButton" 
@@ -74,7 +82,11 @@ protected:
 	virtual void BeginPlay() override;
 	void SetAimingMode(AimingMode NewAimingMode);
 	ECharacterState CharState;
+<<<<<<< HEAD
 
+=======
+	AimingMode CurrentAimingMode;
+>>>>>>> dabc9494911cf9650bee4da0bbbbb1e542191f82
 	FOnSprint OnSprint;
 	FVector DirectionToMove = FVector::ZeroVector;
 	float CurrentPawnSpeed;
