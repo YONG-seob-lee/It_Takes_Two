@@ -3,14 +3,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Actor_Base_Character.h"
-#include "Actor_MayCh.generated.h"
+#include "Animation/AnimNotifies/AnimNotify.h"
+#include "EndRollAnimNotify.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class IT_TAKES_TOO_API AActor_MayCh : public AActor_Base_Character
+class IT_TAKES_TOO_API UEndRollAnimNotify : public UAnimNotify
 {
 	GENERATED_BODY()
 private:

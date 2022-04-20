@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "It_takes_too.h"
+#include "../It_takes_too.h"
 #include "GameFramework/GameModeBase.h"
 #include "ITT_GameMode.generated.h"
 

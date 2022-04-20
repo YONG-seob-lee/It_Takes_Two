@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "It_takes_too.h"
+#include "../It_takes_too.h"
 #include "GameFramework/PlayerController.h"
 #include "FirstPlayerController.generated.h"
 
